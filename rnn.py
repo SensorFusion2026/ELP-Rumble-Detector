@@ -4,7 +4,6 @@ import numpy as np
 import os
 from rnn_config import RNNConfig
 
-
 class RNN(tf.keras.Model):
     """
     Recurrent Neural Network model for audio sequence classification.

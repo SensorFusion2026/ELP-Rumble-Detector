@@ -4,8 +4,8 @@ def main():
     # Import models and configurations
     from rnn import RNN
     from rnn_config import RNNConfig
-    # from cnn import CNN  # Uncomment when CNN.py is available
-    # from cnn_config import CNNConfig  # Uncomment when available
+    from cnn import CNN  # Uncomment when CNN.py is available
+    from cnn_config import CNNConfig  # Uncomment when available
     
     print("=== RNN vs CNN Model Comparison ===\n")
     
@@ -40,16 +40,16 @@ def main():
     rnn_model.summary()
     
     # === CNN Model Setup (commented out until CNN.py is created) ===
-    # print("\nSetting up CNN model...")
-    # cnn_config = CNNConfig(common_config)
-    # cnn_input_shape = (563, 98, 1)  # Spectrogram dimensions from legacy
-    # cnn_model = CNN(model_config=cnn_config, training=True, input_shape=cnn_input_shape)
-    # 
-    # # Build CNN model
-    # cnn_model.build((None, *cnn_input_shape))
-    # 
-    # print("\n--- CNN Model Summary ---")
-    # cnn_model.summary()
+    print("\nSetting up CNN model...")
+    cnn_config = CNNConfig(common_config)
+    cnn_input_shape = (563, 98, 1)  # Spectrogram dimensions from legacy
+    cnn_model = CNN(model_config=cnn_config, training=True, input_shape=cnn_input_shape)
+    
+    # Build CNN model
+    cnn_model.build((None, *cnn_input_shape))
+    
+    print("\n--- CNN Model Summary ---")
+    cnn_model.summary()
     
     print(f"\n=== Model Configurations ===")
     print(f"RNN - Processes raw audio sequences of length {rnn_config.sequence_length}")
@@ -57,8 +57,8 @@ def main():
     print(f"RNN - Architecture: TimeDistributed LSTM({rnn_config.first_lstm_units}) -> LSTM({rnn_config.second_lstm_units}) -> Dense layers")
     
     # CNN info will be added when CNN.py is ready
-    # print(f"CNN - Processes spectrogram images of shape {cnn_input_shape}")
-    # print(f"CNN - Uses ResNet50 backbone with custom dense layers")
+    print(f"CNN - Processes spectrogram images of shape {cnn_input_shape}")
+    print(f"CNN - Uses ResNet50 backbone with custom dense layers")
     
     print(f"\nCommon settings:")
     print(f"- Learning rate: {common_config['learning_rate']}")
