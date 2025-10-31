@@ -2,7 +2,7 @@
 def main():
     """Main function to demonstrate RNN and CNN model usage."""
     # Import models and configurations
-    from RNN import RNN
+    from rnn import RNN
     from rnn_config import RNNConfig
     # from cnn import CNN  # Uncomment when CNN.py is available
     # from cnn_config import CNNConfig  # Uncomment when available
