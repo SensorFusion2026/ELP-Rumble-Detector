@@ -35,8 +35,6 @@ class DataPathConfig(object):
 
         # Negative Raw Data Path (Single Source)
         NEG_SOURCE_INPUT_DIR = os.path.join(CORNELL_DATA_ROOT, "Gunshot/Testing/PNNN/Sounds")
-
-    
     
     # ------------- Preprocessed Clips Paths -------------
     # Positive Preprocessed Clips

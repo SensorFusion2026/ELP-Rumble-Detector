@@ -1,6 +1,8 @@
+# models/cnn.py
 import tensorflow as tf
 import os
-from cnn_config import CNNConfig
+from datetime import datetime
+from models.cnn_config import CNNConfig
 
 class CNN(tf.keras.Model):
 
@@ -55,8 +57,8 @@ class CNN(tf.keras.Model):
     def call(self, x, training=False):
         #Forward pass through CNN.
         # Convert grayscale to RGB if necessary
-        if x.shape[-1] == 1:
-            x = tf.image.grayscale_to_rgb(x)
+        # if x.shape[-1] == 1:
+        #     x = tf.image.grayscale_to_rgb(x)
 
         x = self.resnet(x, training=training)
         x = self.flatten(x)
@@ -102,6 +104,8 @@ class CNN(tf.keras.Model):
     def _get_default_callbacks(self):
         #Default callbacks: early stopping, checkpoint, tensorboard.
         callbacks = []
+
+        # Early stopping
         early_stopping = tf.keras.callbacks.EarlyStopping(
             monitor="val_loss",
             patience=self.cfg.PATIENCE,
@@ -110,19 +114,18 @@ class CNN(tf.keras.Model):
         )
         callbacks.append(early_stopping)
 
-        if hasattr(self.cfg, "model_dir"):
-            os.makedirs(self.cfg.model_dir, exist_ok=True)
-            checkpoint = tf.keras.callbacks.ModelCheckpoint(
-                filepath=os.path.join(self.cfg.model_dir, "best_cnn_model.h5"),
-                monitor="val_loss",
-                save_best_only=True,
-            )
-            callbacks.append(checkpoint)
+        # Lightweight best-weights checkpoint (weights only)
+        checkpoint_cb = tf.keras.callbacks.ModelCheckpoint(
+            filepath=os.path.join(self.cfg.export_dir, "best_weights.weights.h5"),
+            monitor="val_loss",
+            save_best_only=True,
+            save_weights_only=True,
+        )
+        callbacks.append(checkpoint_cb)
 
-        if hasattr(self.cfg, "log_dir"):
-            os.makedirs(self.cfg.log_dir, exist_ok=True)
-            tensorboard = tf.keras.callbacks.TensorBoard(log_dir=self.cfg.log_dir)
-            callbacks.append(tensorboard)
+        # Tensorboard logs
+        tb_log_dir = os.path.join(self.cfg.export_dir, "logs")
+        callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=tb_log_dir))
 
         return callbacks
 
@@ -142,16 +145,33 @@ class CNN(tf.keras.Model):
         probs = self.predict(dataset)
         return (probs >= threshold).astype(int)
 
-    def save_model(self, filepath):
+    def save_model(self, export_dir: str):
         """
-        Save the model.
-        
-        Args:
-            filepath: Path to save the model
+        Save the full model (architecture + weights + optimizer, etc.)
+        into export_dir/final_model.keras
         """
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        os.makedirs(export_dir, exist_ok=True)
+        filepath = os.path.join(export_dir, "final_model.keras")
         self.save(filepath)
-        print(f"Model saved to {filepath}")
+        print(f"Final model saved to {filepath}")
+
+    # def save_model(self, filepath):
+    #     """
+    #     Save the model.
+
+    #     Args:
+    #         filepath: Path to save the model or directory to put it in.
+    #     """
+    #     # If the user provides a directory, turn it into a full file path
+    #     if not filepath.endswith(".keras"):
+    #         filepath = os.path.join(filepath, "saved_model.keras")
+
+    #     dirpath = os.path.dirname(filepath)
+    #     if dirpath:
+    #         os.makedirs(dirpath, exist_ok=True)
+
+    #     self.save(filepath)
+    #     print(f"Model saved to {filepath}")
 
     def load_model(self, filepath):
         """
