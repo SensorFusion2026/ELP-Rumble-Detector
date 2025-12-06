@@ -14,7 +14,7 @@ class CNNConfig:
         self.dropout_rate = config.get("dropout_rate", 0.5)
         self.activation_function = config.get("activation_function", "LeakyReLU")
         self.num_epochs = config.get("num_epochs", 10)
-        self.downsample_fraction = config.get("downsample_fraction", .01)
+        self.downsample_fraction = config.get("downsample_fraction", 1)
 
         # ---- run identity / export directory ----
         timestamp = config.get("run_timestamp", datetime.now().strftime("%Y%m%d_%H%M%S"))
