@@ -4,8 +4,8 @@ def main():
     # Import models and configurations
     from rnn import RNN
     from rnn_config import RNNConfig
-    from cnn import CNN  # Uncomment when CNN.py is available
-    from cnn_config import CNNConfig  # Uncomment when available
+    from models.cnn import CNN
+    from models.cnn_config import CNNConfig
     
     print("=== RNN vs CNN Model Comparison ===\n")
     
