@@ -1,5 +1,6 @@
 /.DS_Store
 /data
+.env
 /exported
 __pycache__/
 *.py[cod]
