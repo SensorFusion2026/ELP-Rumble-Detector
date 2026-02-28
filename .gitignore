@@ -2,5 +2,8 @@
 /data
 .env
 /exported
+/model_checkpoints
 __pycache__/
 *.py[cod]
+/logs
+.vscode/

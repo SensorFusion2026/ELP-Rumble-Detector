@@ -1,7 +1,6 @@
 # Configuration used for RNN training
 import os
-from data_creation.data_path_config import DataPathConfig
-
+from elp_rumble.config.paths import TFRECORDS_AUDIO_DIR
 
 class RNNConfig(object):
     """Configuration class for RNN model settings and paths."""
@@ -9,10 +8,9 @@ class RNNConfig(object):
     def __init__(self, config):
         """Initialize RNN configuration with provided config dictionary."""
         self.config = config
-        self.paths = DataPathConfig()
         
         # Data related paths
-        self.DATASET_FOLDER = self.paths.TFRECORDS_AUDIO_DIR
+        self.DATASET_FOLDER = TFRECORDS_AUDIO_DIR
         self.TRAIN_FILE = 'train.tfrecord'
         self.VALIDATE_FILE = 'validate.tfrecord'
         self.TEST_FILE = 'test.tfrecord'
