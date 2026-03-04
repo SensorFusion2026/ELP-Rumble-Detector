@@ -1,4 +1,4 @@
-# data_creation/neg_audio_clips.py
+# src/elp_rumble/data_creation/neg_audio_clips.py
 """
 Usage Instructions:
 -------------------

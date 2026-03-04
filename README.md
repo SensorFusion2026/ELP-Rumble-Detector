@@ -325,7 +325,7 @@ nano .env
 ---
 
 ## Data Preprocessing (Suggested to do on your local machine)
-The 'data_creation' folder contains all of the necessary scripts to convert the Elephant data from raw 24-hour audio clips, to audio clippings of 5 seconds, to tfrecords of audio with appropriate labels, and finally to the tfrecords of spectrograms. These scripts are only helpful if you have access to the ELP data provided by Cornell.
+The `elp_rumble.data_creation` package contains all of the necessary scripts to convert the Elephant data from raw 24-hour audio clips, to audio clippings of 5 seconds, to tfrecords of audio with appropriate labels, and finally to the tfrecords of spectrograms. These scripts are only helpful if you have access to the ELP data provided by Cornell.
 
 Ensure you are in the correct location and your local venv is activated:
 ```bash
@@ -336,15 +336,15 @@ cd ELP-CNNvsRNN
 
 Cut audio clippings:
 ```bash
-python3 data_creation/pos_audio_clips.py --mode train
-python3 data_creation/pos_audio_clips.py --mode test
-python3 data_creation/neg_audio_clips.py
+python3 -m elp_rumble.data_creation.pos_audio_clips --mode train
+python3 -m elp_rumble.data_creation.pos_audio_clips --mode test
+python3 -m elp_rumble.data_creation.neg_audio_clips
 ```
 
 Convert clips into tfrecords, then convert audio tfrecords into spectrograms:
 ```bash
-python3 data_creation/create_tfrecords.py
-python3 data_creation/convert_audio_to_spec_tfrecords.py
+python3 -m elp_rumble.data_creation.create_tfrecords
+python3 -m elp_rumble.data_creation.convert_audio_to_spec_tfrecords
 ```
 
 Once you have the directories of the tfrecords for either audio or spectrogram, go into rnn_config.py and cnn_config.py and configure the following parameters to the location of the dataset directory and file names:

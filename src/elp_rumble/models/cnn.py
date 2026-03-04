@@ -2,7 +2,7 @@
 import tensorflow as tf
 import os
 from datetime import datetime
-from models.cnn_config import CNNConfig
+from .cnn_config import CNNConfig
 
 class CNN(tf.keras.Model):
 

@@ -1,4 +1,4 @@
-# data_creation/convert_audio_to_spec_tfrecords.py
+# src/elp_rumble/data_creation/convert_audio_to_spec_tfrecords.py
 import os
 import numpy as np
 import tensorflow as tf

@@ -1,4 +1,4 @@
-# data_creation/pos_audio_clips.py
+# src/elp_rumble/data_creation/pos_audio_clips.py
 """
 Usage Instructions:
 -------------------
@@ -8,10 +8,10 @@ Ensure your virtual environment is activated before running and that the path
 for the Cornell Data root DIR is correct.
 
 To process the TRAINING dataset, run:
-    python3 data_creation/pos_audio_clips.py --mode train
+    python3 -m elp_rumble.data_creation.pos_audio_clips --mode train
 
 To process the TESTING dataset, run:
-    python3 data_creation/pos_audio_clips.py --mode test
+    python3 -m elp_rumble.data_creation.pos_audio_clips --mode test
 """
 
 import os

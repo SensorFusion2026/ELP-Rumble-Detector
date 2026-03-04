@@ -5,8 +5,8 @@ Test script to verify RNN functionality with dummy data.
 
 import tensorflow as tf
 import numpy as np
-from rnn import RNN
-from rnn_config import RNNConfig
+from .rnn import RNN
+from .rnn_config import RNNConfig
 
 def test_rnn_model():
     """Test the RNN model with dummy data."""

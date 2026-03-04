@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
-from models.cnn import CNN
-from models.cnn_config import CNNConfig
+from .cnn import CNN
+from .cnn_config import CNNConfig
 
 def test_cnn_model():
     """Test the CNN model with dummy data."""

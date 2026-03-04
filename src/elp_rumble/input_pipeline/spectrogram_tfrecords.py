@@ -1,4 +1,4 @@
-# input_pipeline/spectrogram_tfrecords.py
+# src/elp_rumble/input_pipeline/spectrogram_tfrecords.py
 import os
 import tensorflow as tf
 from elp_rumble.config.paths import TFRECORDS_SPECTROGRAM_DIR
