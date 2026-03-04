@@ -1,5 +1,7 @@
 /.DS_Store
 /data
+/data_backup*
+*.egg-info/
 .env
 /exported
 /model_checkpoints
