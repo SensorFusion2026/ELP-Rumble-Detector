@@ -1,6 +1,11 @@
 /.DS_Store
 /data
+/data_backup*
+*.egg-info/
 .env
 /exported
+/model_checkpoints
 __pycache__/
 *.py[cod]
+/logs
+.vscode/

@@ -2,20 +2,22 @@
 import tensorflow as tf
 import os
 from datetime import datetime
-from models.cnn_config import CNNConfig
+from .cnn_config import CNNConfig
 
 class CNN(tf.keras.Model):
 
-    def __init__(self, model_config, training=True, input_shape=None):
+    def __init__(self, model_config, training=True):
         #Initialize CNN model.
         #Args:
         #model_config: Configuration object with CNN settings
         #training: Boolean for training mode
-        #input_shape: Expected input shape (H, W, C)
         
         super(CNN, self).__init__()
         self.cfg = model_config
         self.training_mode = training
+
+        if not hasattr(self.cfg, "input_shape") or self.cfg.input_shape is None:
+            raise ValueError("CNNConfig must define input_shape, e.g. (H, W, C).")
 
         # Set activation
         self._set_activation_function()
@@ -24,7 +26,7 @@ class CNN(tf.keras.Model):
         self.resnet = tf.keras.applications.ResNet50(
             include_top=False,
             weights=None,
-            input_shape=input_shape
+            input_shape=self.cfg.input_shape
         )
 
         # Flatten output for dense layers
@@ -201,22 +203,22 @@ if __name__ == "__main__":
 
     # Create config object
     model_config = CNNConfig(config)
+    input_shape = model_config.input_shape
 
     # Create model
     model = CNN(model_config=model_config, training=True)
 
-    # Build the model with example input shape
-    # Input shape: (batch_size, sequence_length)
-    model.build((None, model_config.sequence_length))
+    # Build the model with spectrogram input shape: (batch_size, H, W, C)
+    model.build((None, *input_shape))
 
     # Print model summary
     print("CNN Model Architecture:")
     model.summary()
 
     print(f"\nModel configuration:")
-    print(f"- Sequence length: {model_config.sequence_length}")
-    print(f"- Chunk size: {model_config.chunk_size}")
-    print(f"- Number of chunks: {model_config.num_chunks}")
+    print(f"- Input shape: {input_shape}")
+    print(f"- Learning rate: {model_config.learning_rate}")
+    print(f"- Batch size: {model_config.batch_size}")
     print(f"- Activation function: {model_config.activation_function}")
     print(f"- Dropout rate: {model_config.dropout_rate}")
-
+    print(f"- Epochs: {model_config.num_epochs}")

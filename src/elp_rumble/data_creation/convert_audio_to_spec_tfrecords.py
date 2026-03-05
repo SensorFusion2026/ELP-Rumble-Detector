@@ -1,12 +1,11 @@
+# src/elp_rumble/data_creation/convert_audio_to_spec_tfrecords.py
 import os
 import numpy as np
 import tensorflow as tf
-# import argparse
-from data_path_config import DataPathConfig
+from elp_rumble.config.paths import TFRECORDS_AUDIO_DIR, TFRECORDS_SPECTROGRAM_DIR
 
-paths = DataPathConfig()
-INPUT_AUDIO_TFR_FOLDER = paths.TFRECORDS_AUDIO_DIR
-OUTPUT_SPEC_FOLDER = paths.TFRECORDS_SPECTROGRAM_DIR
+INPUT_AUDIO_TFR_FOLDER = TFRECORDS_AUDIO_DIR
+OUTPUT_SPEC_FOLDER = TFRECORDS_SPECTROGRAM_DIR
 
 def write_tfrecords(dataset: tf.data.Dataset, file_prefix):
 
@@ -92,15 +91,6 @@ def normalize_spectrogram(spectrogram, global_mean, global_std):
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 def main():
-    # parser = argparse.ArgumentParser(description="Generate spectrograms from TFRecords.")
-    # parser.add_argument("--audio_tfrecords_directory", type=str, required=True, help="Path to the directory containing audio TFRecords.")
-    # parser.add_argument("--output_folder", type=str, required=True, help="Path to save the spectrogram dataset.")
-    # args = parser.parse_args()
-
-    # # Create spectrograms and write
-    # audio_files_directory = args.audio_tfrecords_directory
-    # spectrogram_dataset = args.output_folder
-
     if not os.path.exists(INPUT_AUDIO_TFR_FOLDER) or not os.path.isdir(INPUT_AUDIO_TFR_FOLDER):
         print("Invalid input folder. Ensure audio tfrecords data has been created (using create_tfrecords.py), ensure paths are correct, and try running again.")
         exit()

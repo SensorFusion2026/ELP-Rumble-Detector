@@ -1,7 +1,7 @@
 # Configuration used for training
 import os
 from pathlib import Path
-from data_creation.data_path_config import DataPathConfig
+from data_path_config import DataPathConfig
 
 
 class CNNConfig(object):

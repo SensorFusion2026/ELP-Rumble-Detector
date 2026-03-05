@@ -70,12 +70,13 @@ rm -rf $SCRATCH_DIR/build-temp-*/
 singularity build --sandbox $SCRATCH_DIR/sandbox/ /cm/shared/apps/containers/singularity/tensorflow/tensorflow-latest.sif || { echo "❌ Singularity build failed"; exit 1; }
 
 # Copy requirements file - Update your repo name accordingly
-cp /expanse/lustre/projects/cso100/$USER/ELP-CNNvsRNN/requirements.txt $SCRATCH_DIR/requirements.txt || { echo "❌ Could not copy requirements.txt"; exit 1; }
+cp /expanse/lustre/projects/cso100/$USER/ELP-CNNvsRNN-v2/requirements.txt $SCRATCH_DIR/requirements.txt || { echo "❌ Could not copy requirements.txt"; exit 1; }
 
 # Install dependencies inside container
 singularity exec --writable $SCRATCH_DIR/sandbox/ bash -c "\
   pip install --upgrade pip && \
   pip install -r /requirements.txt && \
+  pip install -e /expanse/lustre/projects/cso100/$USER/ELP-CNNvsRNN-v2 && \
   rm /requirements.txt" || { echo "❌ pip install failed"; exit 1; }
 
 # Copy completed sandbox to project storage
@@ -290,7 +291,7 @@ pyenv install 3.11.9
 ```
 
 **Configure the Project Environment**
-Navigate to the root folder which will hold your ELP-CNNvsRNN cloned repository and your venv
+Navigate to the root folder which will hold your ELP-CNNvsRNN-v2 cloned repository and your venv
 ```bash
 cd /path/to/your/ElephantListeningProject
 ```
@@ -300,12 +301,13 @@ Clone this repo from github
 git clone <insert repo's https link>
 ```
 
-Create a venv with python 3.11, activate it, cd into repo, and install requirements.txt.
+Create a venv with python 3.11, activate it, cd into repo, and install dependencies.
 ```bash
 ~/.pyenv/versions/3.11.9/bin/python -m venv elp-venv
 source elp-venv/bin/activate
-cd ELP-RNNvsCNN
+cd ELP-CNNvsRNN-v2
 pip install -r requirements.txt
+pip install -e .
 ```
 
 Create your personal .env configuration file from the example
@@ -325,35 +327,31 @@ nano .env
 ---
 
 ## Data Preprocessing (Suggested to do on your local machine)
-The 'data_creation' folder contains all of the necessary scripts to convert the Elephant data from raw 24-hour audio clips, to audio clippings of 5 seconds, to tfrecords of audio with appropriate labels, and finally to the tfrecords of spectrograms. These scripts are only helpful if you have access to the ELP data provided by Cornell.
+The `elp_rumble.data_creation` package contains all of the necessary scripts to convert the Elephant data from raw 24-hour audio clips, to audio clippings of 5 seconds, to tfrecords of audio with appropriate labels, and finally to the tfrecords of spectrograms. These scripts are only helpful if you have access to the ELP data provided by Cornell.
 
 Ensure you are in the correct location and your local venv is activated:
 ```bash
 cd /path/to/your/ElephantListeningProject
 source elp-venv/bin/activate
-cd ELP-CNNvsRNN
+cd ELP-CNNvsRNN-v2
 ```
 
 Cut audio clippings:
 ```bash
-python3 data_creation/pos_audio_clips.py --mode train
-python3 data_creation/pos_audio_clips.py --mode test
-python3 data_creation/neg_audio_clips.py
+python3 -m elp_rumble.data_creation.pos_audio_clips --mode train
+python3 -m elp_rumble.data_creation.pos_audio_clips --mode test
+python3 -m elp_rumble.data_creation.neg_audio_clips
 ```
 
 Convert clips into tfrecords, then convert audio tfrecords into spectrograms:
 ```bash
-python3 data_creation/create_tfrecords.py
-python3 data_creation/convert_audio_to_spec_tfrecords.py
+python3 -m elp_rumble.data_creation.create_tfrecords
+python3 -m elp_rumble.data_creation.convert_audio_to_spec_tfrecords
 ```
 
-Once you have the directories of the tfrecords for either audio or spectrogram, go into rnn_config.py and cnn_config.py and configure the following parameters to the location of the dataset directory and file names:
-```python
-DATASET_FOLDER = 'audio_tfrecords'
-TRAIN_FILE = 'train.tfrecord'
-VALIDATE_FILE = 'validate.tfrecord'
-TEST_FILE = 'test.tfrecord'
-```
+Once TFRecords are created, no manual path edits are required for CNN. CNN data paths come from `src/elp_rumble/input_pipeline/spectrogram_tfrecords.py` and `src/elp_rumble/config/paths.py`.
+
+For RNN-only workflows, dataset file names are defined in `src/elp_rumble/models/rnn_config.py`
 
 ---
 
@@ -362,13 +360,13 @@ TEST_FILE = 'test.tfrecord'
 To upload your local preprocessed tfrecords data to SDSC Expanse project storage, use the `rsync` command from your local terminal:
 ```bash
 rsync -avh --progress \
-"/path/to/local/project/ELP-CNNvsRNN/data" \
-rdenn@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN/data
+"/path/to/local/project/ELP-CNNvsRNN-v2/data" \
+your_username@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN-v2/data
 
 rsync -avh --progress \
-"/path/to/local/project/repo/ELP-CNNvsRNN/data/tfrecords_audio" \
-"/path/to/local/project/repo/ELP-CNNvsRNN/data/tfrecords_spectrogram" \
-rdenn@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN/data/
+"/path/to/local/project/repo/ELP-CNNvsRNN-v2/data/tfrecords_audio" \
+"/path/to/local/project/repo/ELP-CNNvsRNN-v2/data/tfrecords_spectrogram" \
+your_username@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN-v2/data/
 ```
 
 Replace `"/path/to/local/project/repo/"` with the full path to your local git project repo and replace `your_username` with your ACCESS Expanse username.
@@ -379,39 +377,53 @@ If interrupted, you can re-run the same command to resume.
 
 You can check storage usage (snapshot) on Expanse with:
 ```bash
-du -sh /expanse/lustre/projects/cso100/$USER/elp_container/ELP-CNNvsRNN/data/
+du -sh /expanse/lustre/projects/cso100/$USER/elp_container/ELP-CNNvsRNN-v2/data/
 ```
 
 Or to monitor it continuously as it grows:
 ```bash
-watch -n 5 'du -sh /expanse/lustre/projects/cso100/$USER/elp_container/ELP-CNNvsRNN/data/'
+watch -n 5 'du -sh /expanse/lustre/projects/cso100/$USER/elp_container/ELP-CNNvsRNN-v2/data/'
 ```
 
 ---
 
 # Running Experiments
 
-### Local Terminal:
+### Local Terminal (current package entrypoints):
 
 ```bash
-python cross_validation_experiment.py cnn  # or rnn
+python3 -m elp_rumble.training.train_compare
+python3 -m elp_rumble.training.train_cnn
+```
+
+Optional train command with overrides:
+```bash
+python3 -m elp_rumble.training.train_cnn --epochs 10 --batch_size 32 --lr 1e-4
+```
+
+### Legacy scripts (deprecated, kept under `Legacy/`):
+
+```bash
+python3 Legacy/cross_validation_experiment.py cnn  # or rnn
 ```
 
 ### SLURM Batch Job:
 
-For running cross-validation tuning experiment to find best hyperparameters:
-```bash
-sbatch scripts/run-cross_validation_experiment-gpu-shared.sh
-```
+SLURM scripts now live in `slurm_scripts/`.
 
 For training debugging, making sure paths are correct, etc.:
 ```bash
-sbatch scripts/run-train-gpu-shared.sh
+sbatch slurm_scripts/run-train-gpu-debug.sh
 ```
 
 For full training:
 ```bash
-sbatch scripts/run-train-gpu-shared.sh
+sbatch slurm_scripts/run-train-gpu-shared.sh
+```
+
+Convenience submitters:
+```bash
+bash slurm_scripts/submit-train.sh shared
 ```
 
 #### Monitor your job:
@@ -455,8 +467,8 @@ cat train.o41166992.exp-14-58
 ## View Results
 
 ```bash
-python view_cross_validation_results.py
-vim train.py  # edit best config
+python3 Legacy/view_cross_validation_results.py
+vim Legacy/train.py  # edit best config
 ```
 
 ---
@@ -464,13 +476,13 @@ vim train.py  # edit best config
 ## Train Final Model
 
 ```bash
-python train.py cnn  # or rnn
+python3 -m elp_rumble.training.train_cnn
 ```
 
 Or submit with:
 
 ```bash
-sbatch scripts/run-train-gpu-shared.sh
+sbatch slurm_scripts/run-train-gpu-shared.sh
 ```
 
 # Other Tools/Resources

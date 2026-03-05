@@ -1,7 +1,7 @@
-# input_pipeline/spectrogram_tfrecords.py
+# src/elp_rumble/input_pipeline/spectrogram_tfrecords.py
 import os
 import tensorflow as tf
-from data_creation.data_path_config import DataPathConfig
+from elp_rumble.config.paths import TFRECORDS_SPECTROGRAM_DIR
 
 H, W, C = 563, 98, 1
 INPUT_SHAPE = (H, W, C)
@@ -35,8 +35,7 @@ def make_ds(tfrecord_path, batch_size, shuffle=False, downsample_fraction=1, see
     return ds
 
 def get_spec_paths():
-    paths = DataPathConfig()
-    base = paths.TFRECORDS_SPECTROGRAM_DIR
+    base = TFRECORDS_SPECTROGRAM_DIR
     return {
         "train": os.path.join(base, "train.tfrecord"),
         "val":   os.path.join(base, "validate.tfrecord"),

@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import LSTM, Dense, TimeDistributed, Reshape, Dropout
 import numpy as np
 import os
-from rnn_config import RNNConfig
+from .rnn_config import RNNConfig
 
 class RNN(tf.keras.Model):
     """

@@ -6,6 +6,16 @@ import tensorflow as tf
 from collections import Counter
 from sklearn.model_selection import train_test_split
 
+
+def validate_dir(path_value, label):
+    """Validate that a configured path exists and is a directory."""
+    if not path_value:
+        raise ValueError(
+            f"{label} is not configured. Set ENVIRONMENT=local and CORNELL_DATA_ROOT in .env before running preprocessing scripts."
+        )
+    if not os.path.isdir(path_value):
+        raise FileNotFoundError(f"{label} does not exist or is not a directory: {path_value}")
+
 def write_tfrecords(dataset, file_prefix):
     filename = f'{file_prefix}.tfrecord'
     with tf.io.TFRecordWriter(filename) as writer:
