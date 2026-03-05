@@ -7,9 +7,11 @@ from .utils import (
     load_wavs_into_dataset,
     normalize_dataset,
     stratified_split,
+    upsert_normalization_stats,
     write_tfrecords,
 )
 from elp_rumble.config.paths import (
+    DATA_ROOT,
     POS_TRAIN_VAL_CLIPS_DIR,
     TRAIN_VAL_NEG_CLIPS_DIR,
     POS_HOLDOUT_TEST_CLIPS_DIR,
@@ -41,6 +43,12 @@ def main():
 
     # Compute statistics
     global_mean, global_std = compute_statistics(combined_dataset)
+    normalization_stats_path = DATA_ROOT / "normalization_stats.json"
+    upsert_normalization_stats(
+        normalization_stats_path,
+        {"audio_mean": global_mean, "audio_std": global_std},
+    )
+    print(f"Saved audio normalization stats to {normalization_stats_path}")
 
     del combined_dataset
 

@@ -2,7 +2,8 @@
 import os
 import numpy as np
 import tensorflow as tf
-from elp_rumble.config.paths import TFRECORDS_AUDIO_DIR, TFRECORDS_SPECTROGRAM_DIR
+from elp_rumble.config.paths import DATA_ROOT, TFRECORDS_AUDIO_DIR, TFRECORDS_SPECTROGRAM_DIR
+from .utils import upsert_normalization_stats
 
 INPUT_AUDIO_TFR_FOLDER = TFRECORDS_AUDIO_DIR
 OUTPUT_SPEC_FOLDER = TFRECORDS_SPECTROGRAM_DIR
@@ -119,6 +120,12 @@ def main():
         datasets[i] = (apply_stft(dataset, frame_length, frame_step, sample_rate, max_frequency), name)
 
     global_mean, global_std = compute_global_stats(datasets)
+    normalization_stats_path = DATA_ROOT / "normalization_stats.json"
+    upsert_normalization_stats(
+        normalization_stats_path,
+        {"spec_mean": global_mean, "spec_std": global_std},
+    )
+    print(f"Saved spectrogram normalization stats to {normalization_stats_path}")
 
     for dataset, file_name in datasets:
         normalized_dataset = dataset.map(lambda spectrogram, label: (normalize_spectrogram(spectrogram, global_mean, global_std), label), num_parallel_calls=tf.data.AUTOTUNE)

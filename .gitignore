@@ -4,6 +4,7 @@
 *.egg-info/
 .env
 /exported
+.github/
 /model_checkpoints
 __pycache__/
 *.py[cod]

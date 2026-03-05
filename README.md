@@ -349,6 +349,11 @@ python3 -m elp_rumble.data_creation.create_tfrecords
 python3 -m elp_rumble.data_creation.convert_audio_to_spec_tfrecords
 ```
 
+During preprocessing, normalization statistics are saved to `data/normalization_stats.json`.
+`create_tfrecords` writes `audio_mean` and `audio_std`, and
+`convert_audio_to_spec_tfrecords` writes `spec_mean` and `spec_std`.
+Running both scripts produces a single JSON file with all four keys.
+
 Once TFRecords are created, no manual path edits are required for CNN. CNN data paths come from `src/elp_rumble/input_pipeline/spectrogram_tfrecords.py` and `src/elp_rumble/config/paths.py`.
 
 For RNN-only workflows, dataset file names are defined in `src/elp_rumble/models/rnn_config.py`
