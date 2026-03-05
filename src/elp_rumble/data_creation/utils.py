@@ -2,6 +2,7 @@ import wave
 from scipy.signal import resample, butter, lfilter
 import numpy as np
 import os
+import json
 import tensorflow as tf
 from collections import Counter
 from sklearn.model_selection import train_test_split
@@ -156,6 +157,23 @@ def compute_statistics(dataset):
     
     mean, std = total_sum / total_count, np.sqrt((total_sum_sq / total_count) - (total_sum / total_count) ** 2)
     return mean, std
+
+
+def upsert_normalization_stats(stats_path, updates):
+    """Merge normalization stats into JSON at stats_path, creating file if needed."""
+    os.makedirs(os.path.dirname(os.fspath(stats_path)), exist_ok=True)
+
+    existing = {}
+    if os.path.exists(stats_path):
+        with open(stats_path, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+
+    existing.update({k: float(v) for k, v in updates.items()})
+
+    tmp_path = f"{stats_path}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(existing, f, indent=2)
+    os.replace(tmp_path, stats_path)
 
 def normalize_dataset(dataset, mean, std):
     return dataset.map(lambda audio: (audio - mean) / std)
