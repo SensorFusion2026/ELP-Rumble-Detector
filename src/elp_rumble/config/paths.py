@@ -15,10 +15,10 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Get environment vairables from .env
+# Get environment variables from .env
 load_dotenv()
 
-ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "remote")
 CORNELL_DATA_ROOT = os.getenv("CORNELL_DATA_ROOT")
 
 # ---------- Project root (repo root) -----------
