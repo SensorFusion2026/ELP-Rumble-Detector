@@ -45,7 +45,8 @@ def main():
     # Combine, shuffle, and split
     training_datasets = [input['dataset'] for input in inputs if input['split'] == 'train']
 
-    training_dataset = tf.data.Dataset.concatenate(*training_datasets).shuffle(20000, reshuffle_each_iteration=False)
+    training_dataset = reduce(lambda d1, d2: d1.concatenate(d2), training_datasets)
+    training_dataset = training_dataset.shuffle(20000, reshuffle_each_iteration=False)
 
     '''
     ***** Choose whether to create a validation set or not. *****
@@ -71,7 +72,8 @@ def main():
 
     testing_datasets = [input['dataset'] for input in inputs if input['split'] == 'test']
 
-    testing_dataset = tf.data.Dataset.concatenate(*testing_datasets).shuffle(10000, reshuffle_each_iteration=False)
+    testing_dataset = reduce(lambda d1, d2: d1.concatenate(d2), testing_datasets)
+    testing_dataset = testing_dataset.shuffle(10000, reshuffle_each_iteration=False)
 
     write_tfrecords(testing_dataset, os.path.join(output_audio_folder, f"test"))
 
