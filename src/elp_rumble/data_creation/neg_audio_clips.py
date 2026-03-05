@@ -40,21 +40,28 @@ def main():
     print(f"pos_train_clips_count: {pos_train_clips_count}")
     print(f"pos_test_clips_count: {pos_test_clips_count}")
 
-    if pos_train_clips_count > 0 and pos_test_clips_count > 0:
-        train_ratio = pos_train_clips_count / (pos_test_clips_count + pos_train_clips_count)
-        print(f"Train ratio: {train_ratio}")
-        max_train_clips = pos_train_clips_count
-        max_test_clips = pos_test_clips_count
+    DEFAULT_TRAIN_RATIO = 0.3
+    DEFAULT_MAX_TRAIN = 4784
+    DEFAULT_MAX_TEST  = 10698
+
+    have_train = pos_train_clips_count > 0
+    have_test  = pos_test_clips_count > 0
+
+    if have_train and have_test:
+        total_pos = pos_train_clips_count + pos_test_clips_count
+        train_ratio = pos_train_clips_count / total_pos
+        print(f"Train ratio: {train_ratio:.4f}")
     else:
-        train_ratio = 0.3
+        train_ratio = DEFAULT_TRAIN_RATIO
         print(f"Positive clips missing, using default train ratio: {train_ratio}")
-        if not pos_train_clips_count:
-            max_train_clips = 4784
-            print(f"No positive train clips found, using default value for number of neg train clips to generate: {max_train_clips}")
-        if not pos_test_clips_count:
-            max_test_clips = 10698
-            print(f"No positive test clips found, using default value for number of neg test clips to generate: {max_test_clips}")
-        
+
+    max_train_clips = pos_train_clips_count if have_train else DEFAULT_MAX_TRAIN
+    max_test_clips  = pos_test_clips_count  if have_test  else DEFAULT_MAX_TEST
+
+    if not have_train:
+        print(f"No positive train clips found, default neg train clips: {max_train_clips}")
+    if not have_test:
+        print(f"No positive test clips found, default neg test clips: {max_test_clips}")
 
     num_neg_train_input_wavs = int(len(neg_wav_files)*train_ratio)
     num_neg_test_input_wavs = len(neg_wav_files)-num_neg_train_input_wavs
@@ -71,11 +78,11 @@ def main():
     target_sr = 4000 # hz
     expected_final_frames = sample_length * target_sr  # Expected length after downsampling
 
-    for type in ["train", "test"]:
+    for split_type in ["train", "test"]:
 
-        print(f"Generating neg {type}ing clips.")
+        print(f"Generating neg {split_type}ing clips.")
 
-        if type == "train":
+        if split_type == "train":
             max_clips = max_train_clips
             input_wav_files = neg_train_wavs
             output_dir = TRAIN_VAL_NEG_CLIPS_DIR
@@ -127,7 +134,7 @@ def main():
                         print("Not saving, insufficient frames")
 
                     if counter == max_clips:
-                        print(f"{max_clips} neg {type}ing clips generated.")
+                        print(f"{max_clips} neg {split_type}ing clips generated.")
                         break
 
                     starting_pos += int(sample_length * params.framerate)
