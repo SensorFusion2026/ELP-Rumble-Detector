@@ -40,7 +40,7 @@ def main():
     print(f"pos_train_clips_count: {pos_train_clips_count}")
     print(f"pos_test_clips_count: {pos_test_clips_count}")
 
-    if (pos_test_clips_count and pos_train_clips_count):
+    if pos_train_clips_count > 0 and pos_test_clips_count > 0:
         train_ratio = pos_train_clips_count / (pos_test_clips_count + pos_train_clips_count)
         print(f"Train ratio: {train_ratio}")
         max_train_clips = pos_train_clips_count

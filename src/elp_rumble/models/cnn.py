@@ -201,22 +201,22 @@ if __name__ == "__main__":
 
     # Create config object
     model_config = CNNConfig(config)
+    input_shape = model_config.input_shape
 
     # Create model
-    model = CNN(model_config=model_config, training=True)
+    model = CNN(model_config=model_config, training=True, input_shape=input_shape)
 
-    # Build the model with example input shape
-    # Input shape: (batch_size, sequence_length)
-    model.build((None, model_config.sequence_length))
+    # Build the model with spectrogram input shape: (batch_size, H, W, C)
+    model.build((None, *input_shape))
 
     # Print model summary
     print("CNN Model Architecture:")
     model.summary()
 
     print(f"\nModel configuration:")
-    print(f"- Sequence length: {model_config.sequence_length}")
-    print(f"- Chunk size: {model_config.chunk_size}")
-    print(f"- Number of chunks: {model_config.num_chunks}")
+    print(f"- Input shape: {input_shape}")
+    print(f"- Learning rate: {model_config.learning_rate}")
+    print(f"- Batch size: {model_config.batch_size}")
     print(f"- Activation function: {model_config.activation_function}")
     print(f"- Dropout rate: {model_config.dropout_rate}")
-
+    print(f"- Epochs: {model_config.num_epochs}")
