@@ -76,6 +76,7 @@ cp /expanse/lustre/projects/cso100/$USER/ELP-CNNvsRNN-v2/requirements.txt $SCRAT
 singularity exec --writable $SCRATCH_DIR/sandbox/ bash -c "\
   pip install --upgrade pip && \
   pip install -r /requirements.txt && \
+  pip install -e /expanse/lustre/projects/cso100/$USER/ELP-CNNvsRNN-v2 && \
   rm /requirements.txt" || { echo "❌ pip install failed"; exit 1; }
 
 # Copy completed sandbox to project storage
@@ -348,13 +349,9 @@ python3 -m elp_rumble.data_creation.create_tfrecords
 python3 -m elp_rumble.data_creation.convert_audio_to_spec_tfrecords
 ```
 
-Once you have the directories of the tfrecords for either audio or spectrogram, go into rnn_config.py and cnn_config.py and configure the following parameters to the location of the dataset directory and file names:
-```python
-DATASET_FOLDER = 'audio_tfrecords'
-TRAIN_FILE = 'train.tfrecord'
-VALIDATE_FILE = 'validate.tfrecord'
-TEST_FILE = 'test.tfrecord'
-```
+Once TFRecords are created, no manual path edits are required for CNN. CNN data paths come from `src/elp_rumble/input_pipeline/spectrogram_tfrecords.py` and `src/elp_rumble/config/paths.py`.
+
+For RNN-only workflows, dataset file names are defined in `src/elp_rumble/models/rnn_config.py`
 
 ---
 
