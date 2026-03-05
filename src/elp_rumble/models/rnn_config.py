@@ -1,6 +1,6 @@
 # Configuration used for RNN training
 import os
-from elp_rumble.config.paths import TFRECORDS_AUDIO_DIR
+from elp_rumble.config.paths import PROJECT_ROOT, TFRECORDS_AUDIO_DIR
 
 class RNNConfig(object):
     """Configuration class for RNN model settings and paths."""
@@ -27,8 +27,8 @@ class RNNConfig(object):
         self.dropout_rate = config.get("dropout_rate", 0.5)
         self.activation_function = config.get("activation_function", "ReLU")
         self.num_epochs = config.get("num_epochs", 10)
-        self.model_dir = config.get("model_dir", "./model_checkpoints")
-        self.log_dir = config.get("log_dir", "./logs")
+        self.model_dir = config.get("model_dir", str(PROJECT_ROOT / "model_checkpoints"))
+        self.log_dir = config.get("log_dir", str(PROJECT_ROOT / "logs"))
         
         # Prediction settings
         self.NUM_CLASSES = 1

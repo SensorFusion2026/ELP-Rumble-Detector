@@ -16,9 +16,10 @@ To process the TESTING dataset, run:
 
 import os
 import argparse
+from pathlib import Path
 import numpy as np
 import pandas as pd
-from .utils import *
+from .utils import apply_low_pass_filter, down_sample, read_wav_frames, save_audio_to_wav, validate_dir
 from elp_rumble.config.paths import (
     POS_TRAIN_VAL1_METADATA_DIR,
     POS_TRAIN_VAL1_SOUNDS_DIR,
@@ -52,6 +53,10 @@ def main():
         positive_samples_folder = POS_HOLDOUT_TEST_CLIPS_DIR
         print("--- Running in TESTING mode ---")
 
+    for metadata_dir, sounds_dir in meta_sounds_pairs:
+        validate_dir(metadata_dir, "Metadata directory")
+        validate_dir(sounds_dir, "Sounds directory")
+
     # Make the target directory if it does not already exist
     os.makedirs(positive_samples_folder, exist_ok=True)
 
@@ -76,13 +81,13 @@ def main():
             try:
                 negative_signal = ['DUMMY_NoEles', 'DUMMY_noEles']
                 data = data[~data['Tag 1'].isin(negative_signal)]
-            except:
-                pass
+            except KeyError:
+                print("Warning: 'Tag 1' column not found; skipping negative-signal filter.")
 
             try:
                 data = data[~data['notes'].str.contains('faint|marginal|gorilla', case=False, na=False)]
-            except:
-                pass
+            except (KeyError, AttributeError):
+                print("Warning: 'notes' column missing or non-string-like; skipping notes-based filter.")
 
             for file in set(data['Begin File']):
                 # If in test mode, fix the filename prefix
@@ -102,7 +107,9 @@ def main():
                     params = None
                     for i, clip in clips.iterrows():
 
-                        output_filename = f'{file.split(".")[0]}_pos_{round(clip["File Offset (s)"])}_{total_positive_samples + 1}.wav'
+                        output_filename = (
+                            f"{Path(file).stem}_pos_{round(clip['File Offset (s)'])}_{total_positive_samples + 1}.wav"
+                        )
                         output_filepath = os.path.join(positive_samples_folder, output_filename)
 
                         # Check if the file already exists. If so, skip this iteration.

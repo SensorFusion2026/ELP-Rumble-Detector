@@ -6,16 +6,18 @@ from .cnn_config import CNNConfig
 
 class CNN(tf.keras.Model):
 
-    def __init__(self, model_config, training=True, input_shape=None):
+    def __init__(self, model_config, training=True):
         #Initialize CNN model.
         #Args:
         #model_config: Configuration object with CNN settings
         #training: Boolean for training mode
-        #input_shape: Expected input shape (H, W, C)
         
         super(CNN, self).__init__()
         self.cfg = model_config
         self.training_mode = training
+
+        if not hasattr(self.cfg, "input_shape") or self.cfg.input_shape is None:
+            raise ValueError("CNNConfig must define input_shape, e.g. (H, W, C).")
 
         # Set activation
         self._set_activation_function()
@@ -24,7 +26,7 @@ class CNN(tf.keras.Model):
         self.resnet = tf.keras.applications.ResNet50(
             include_top=False,
             weights=None,
-            input_shape=input_shape
+            input_shape=self.cfg.input_shape
         )
 
         # Flatten output for dense layers
@@ -204,7 +206,7 @@ if __name__ == "__main__":
     input_shape = model_config.input_shape
 
     # Create model
-    model = CNN(model_config=model_config, training=True, input_shape=input_shape)
+    model = CNN(model_config=model_config, training=True)
 
     # Build the model with spectrogram input shape: (batch_size, H, W, C)
     model.build((None, *input_shape))

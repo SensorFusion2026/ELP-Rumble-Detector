@@ -12,8 +12,18 @@ Ensure your virtual environment is activated before running.
 import os
 import random
 import wave
+from pathlib import Path
 import numpy as np
-from .utils import *
+from .utils import (
+    apply_low_pass_filter,
+    count_wavs,
+    down_sample,
+    find_wav_files,
+    get_wav_params,
+    save_audio_to_wav,
+    train_test_split,
+    validate_dir,
+)
 from elp_rumble.config.paths import (
     NEG_SOURCE_INPUT_DIR,
     TRAIN_VAL_NEG_CLIPS_DIR,
@@ -21,13 +31,22 @@ from elp_rumble.config.paths import (
     POS_TRAIN_VAL_CLIPS_DIR,
     POS_HOLDOUT_TEST_CLIPS_DIR,
 )
+
 def main():
+    validate_dir(NEG_SOURCE_INPUT_DIR, "Negative source input directory")
+
     os.makedirs(TRAIN_VAL_NEG_CLIPS_DIR, exist_ok=True)
     os.makedirs(HOLDOUT_TEST_NEG_CLIPS_DIR, exist_ok=True)
 
     neg_wav_files = []
     find_wav_files(NEG_SOURCE_INPUT_DIR, neg_wav_files)
     print(f"{len(neg_wav_files)} negative wav files found in {NEG_SOURCE_INPUT_DIR}")
+
+    if not neg_wav_files:
+        raise ValueError(
+            f"No .wav files found in negative source directory: {NEG_SOURCE_INPUT_DIR}. "
+            "Provide valid local raw data and rerun."
+        )
 
     # Shuffle wav files for randomness
     random.seed(42)
@@ -94,6 +113,7 @@ def main():
         counter = 0
 
         for file in input_wav_files:
+            file_stem = Path(file).stem
             params = get_wav_params(file)
             max_frames = params.nframes
             sample_width = params.sampwidth
@@ -128,7 +148,11 @@ def main():
                     data = down_sample(data, params.framerate, target_sr, expected_final_frames)
 
                     if len(data) == expected_final_frames:
-                        save_audio_to_wav(os.path.join(output_dir, f'{os.path.basename(file.split(".")[0])}_neg_{round(starting_pos)}_{counter}.wav'), data, target_sr)
+                        save_audio_to_wav(
+                            os.path.join(output_dir, f"{file_stem}_neg_{round(starting_pos)}_{counter}.wav"),
+                            data,
+                            target_sr,
+                        )
                         counter += 1
                     else:
                         print("Not saving, insufficient frames")

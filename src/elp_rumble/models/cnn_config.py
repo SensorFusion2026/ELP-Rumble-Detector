@@ -1,6 +1,7 @@
 # models/cnn_config.py
 import os
 from datetime import datetime
+from elp_rumble.config.paths import PROJECT_ROOT
 
 class CNNConfig:
     # Configuration for CNN model. Based on RNNConfig
@@ -17,7 +18,7 @@ class CNNConfig:
 
         # ---- run identity / export directory ----
         timestamp = config.get("run_timestamp", datetime.now().strftime("%Y%m%d_%H%M%S"))
-        export_root = config.get("export_root", "./exported/cnn_runs")
+        export_root = config.get("export_root", str(PROJECT_ROOT / "exported" / "cnn_runs"))
 
         default_run_name = config.get(
             "run_name",

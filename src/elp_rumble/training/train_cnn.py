@@ -11,7 +11,6 @@ from elp_rumble.models.cnn_config import CNNConfig
 from elp_rumble.input_pipeline.spectrogram_tfrecords import (
     make_ds,
     get_spec_paths,
-    INPUT_SHAPE,
 )
 
 def parse_args():
@@ -57,8 +56,8 @@ def main():
     val_ds   = make_ds(paths["val"],   cfg.batch_size, shuffle=False, downsample_fraction=cfg.downsample_fraction, seed=SEED)
     test_ds  = make_ds(paths["test"],  cfg.batch_size, shuffle=False, downsample_fraction=cfg.downsample_fraction, seed=SEED)
 
-    model = CNN(model_config=cfg, training=True, input_shape=INPUT_SHAPE)
-    model.build((None, *INPUT_SHAPE))
+    model = CNN(model_config=cfg, training=True)
+    model.build((None, *cfg.input_shape))
     print("\n--- CNN Summary ---")
     model.summary()
 

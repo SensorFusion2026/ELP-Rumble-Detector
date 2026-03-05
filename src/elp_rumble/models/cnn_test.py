@@ -14,24 +14,23 @@ def test_cnn_model():
         "dropout_rate": 0.3,
         "activation_function": "LeakyReLU",
         "num_epochs": 2,
-        "model_dir": "./test_model_checkpoints",
-        "log_dir": "./test_logs"
+        "run_name": "cnn_test_dummy",
     }
 
     # Create model
     cnn_config = CNNConfig(config)
+    input_shape = cnn_config.input_shape
     model = CNN(model_config=cnn_config, training=True)
 
     # Create dummy data
     batch_size = 4
-    sequence_length = cnn_config.sequence_length
 
     print(f"Creating dummy data...")
     print(f"- Batch size: {batch_size}")
-    print(f"- Sequence length: {sequence_length}")
+    print(f"- Input shape: {input_shape}")
 
-    # Generate random audio-like data
-    X_dummy = np.random.randn(batch_size, sequence_length).astype(np.float32)
+    # Generate random spectrogram-like data
+    X_dummy = np.random.randn(batch_size, *input_shape).astype(np.float32)
     y_dummy = np.random.randint(0, 2, (batch_size, 1)).astype(np.float32)
 
     print(f"- Input shape: {X_dummy.shape}")

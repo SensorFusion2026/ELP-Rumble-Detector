@@ -40,7 +40,7 @@ def main() -> None:
     print("\nSetting up CNN model...")
     cnn_config = CNNConfig(common_config)
     cnn_input_shape = (563, 98, 1)
-    cnn_model = CNN(model_config=cnn_config, training=True, input_shape=cnn_input_shape)
+    cnn_model = CNN(model_config=cnn_config, training=True)
 
     cnn_model.build((None, *cnn_input_shape))
 

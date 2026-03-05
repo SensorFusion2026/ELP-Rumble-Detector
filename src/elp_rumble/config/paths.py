@@ -15,15 +15,14 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Get environment variables from .env
-load_dotenv()
-
-ENVIRONMENT = os.getenv("ENVIRONMENT", "remote")
-CORNELL_DATA_ROOT = os.getenv("CORNELL_DATA_ROOT")
-
 # ---------- Project root (repo root) -----------
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
+# Get environment variables from .env located at the project root
+load_dotenv(dotenv_path=PROJECT_ROOT / ".env")
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "remote")
+CORNELL_DATA_ROOT = os.getenv("CORNELL_DATA_ROOT")
 # ---------------------------------------------------------------------
 # Raw Cornell data roots (local only)
 # ---------------------------------------------------------------------
