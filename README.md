@@ -412,19 +412,21 @@ python3 Legacy/cross_validation_experiment.py cnn  # or rnn
 
 ### SLURM Batch Job:
 
-For running cross-validation tuning experiment to find best hyperparameters:
-```bash
-sbatch scripts/run-cross_validation_experiment-gpu-shared.sh
-```
+SLURM scripts now live in `slurm_scripts/`.
 
 For training debugging, making sure paths are correct, etc.:
 ```bash
-sbatch scripts/run-train-gpu-shared.sh
+sbatch slurm_scripts/run-train-gpu-debug.sh
 ```
 
 For full training:
 ```bash
-sbatch scripts/run-train-gpu-shared.sh
+sbatch slurm_scripts/run-train-gpu-shared.sh
+```
+
+Convenience submitters:
+```bash
+bash slurm_scripts/submit-train.sh shared
 ```
 
 #### Monitor your job:
@@ -483,7 +485,7 @@ python3 -m elp_rumble.training.train_cnn
 Or submit with:
 
 ```bash
-sbatch scripts/run-train-gpu-shared.sh
+sbatch slurm_scripts/run-train-gpu-shared.sh
 ```
 
 # Other Tools/Resources
