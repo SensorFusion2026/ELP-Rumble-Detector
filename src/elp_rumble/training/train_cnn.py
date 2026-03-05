@@ -1,17 +1,18 @@
-# training/train_cnn.py
-import os, sys
+# src/elp_rumble/training/train_cnn.py
+import os
 import argparse
 import json
 import csv
 import tensorflow as tf
 from datetime import datetime
 
-
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # add project root to sys.path
-
-from models.cnn import CNN
-from models.cnn_config import CNNConfig
-from input_pipeline.spectrogram_tfrecords import make_ds, get_spec_paths, INPUT_SHAPE
+from elp_rumble.models.cnn import CNN
+from elp_rumble.models.cnn_config import CNNConfig
+from elp_rumble.input_pipeline.spectrogram_tfrecords import (
+    make_ds,
+    get_spec_paths,
+    INPUT_SHAPE,
+)
 
 def parse_args():
     p = argparse.ArgumentParser()

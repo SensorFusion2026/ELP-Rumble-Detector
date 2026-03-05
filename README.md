@@ -70,7 +70,7 @@ rm -rf $SCRATCH_DIR/build-temp-*/
 singularity build --sandbox $SCRATCH_DIR/sandbox/ /cm/shared/apps/containers/singularity/tensorflow/tensorflow-latest.sif || { echo "❌ Singularity build failed"; exit 1; }
 
 # Copy requirements file - Update your repo name accordingly
-cp /expanse/lustre/projects/cso100/$USER/ELP-CNNvsRNN/requirements.txt $SCRATCH_DIR/requirements.txt || { echo "❌ Could not copy requirements.txt"; exit 1; }
+cp /expanse/lustre/projects/cso100/$USER/ELP-CNNvsRNN-v2/requirements.txt $SCRATCH_DIR/requirements.txt || { echo "❌ Could not copy requirements.txt"; exit 1; }
 
 # Install dependencies inside container
 singularity exec --writable $SCRATCH_DIR/sandbox/ bash -c "\
@@ -290,7 +290,7 @@ pyenv install 3.11.9
 ```
 
 **Configure the Project Environment**
-Navigate to the root folder which will hold your ELP-CNNvsRNN cloned repository and your venv
+Navigate to the root folder which will hold your ELP-CNNvsRNN-v2 cloned repository and your venv
 ```bash
 cd /path/to/your/ElephantListeningProject
 ```
@@ -300,12 +300,13 @@ Clone this repo from github
 git clone <insert repo's https link>
 ```
 
-Create a venv with python 3.11, activate it, cd into repo, and install requirements.txt.
+Create a venv with python 3.11, activate it, cd into repo, and install dependencies.
 ```bash
 ~/.pyenv/versions/3.11.9/bin/python -m venv elp-venv
 source elp-venv/bin/activate
-cd ELP-RNNvsCNN
+cd ELP-CNNvsRNN-v2
 pip install -r requirements.txt
+pip install -e .
 ```
 
 Create your personal .env configuration file from the example
@@ -331,7 +332,7 @@ Ensure you are in the correct location and your local venv is activated:
 ```bash
 cd /path/to/your/ElephantListeningProject
 source elp-venv/bin/activate
-cd ELP-CNNvsRNN
+cd ELP-CNNvsRNN-v2
 ```
 
 Cut audio clippings:
@@ -362,13 +363,13 @@ TEST_FILE = 'test.tfrecord'
 To upload your local preprocessed tfrecords data to SDSC Expanse project storage, use the `rsync` command from your local terminal:
 ```bash
 rsync -avh --progress \
-"/path/to/local/project/ELP-CNNvsRNN/data" \
-rdenn@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN/data
+"/path/to/local/project/ELP-CNNvsRNN-v2/data" \
+your_username@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN-v2/data
 
 rsync -avh --progress \
-"/path/to/local/project/repo/ELP-CNNvsRNN/data/tfrecords_audio" \
-"/path/to/local/project/repo/ELP-CNNvsRNN/data/tfrecords_spectrogram" \
-rdenn@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN/data/
+"/path/to/local/project/repo/ELP-CNNvsRNN-v2/data/tfrecords_audio" \
+"/path/to/local/project/repo/ELP-CNNvsRNN-v2/data/tfrecords_spectrogram" \
+your_username@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN-v2/data/
 ```
 
 Replace `"/path/to/local/project/repo/"` with the full path to your local git project repo and replace `your_username` with your ACCESS Expanse username.
@@ -379,22 +380,34 @@ If interrupted, you can re-run the same command to resume.
 
 You can check storage usage (snapshot) on Expanse with:
 ```bash
-du -sh /expanse/lustre/projects/cso100/$USER/elp_container/ELP-CNNvsRNN/data/
+du -sh /expanse/lustre/projects/cso100/$USER/elp_container/ELP-CNNvsRNN-v2/data/
 ```
 
 Or to monitor it continuously as it grows:
 ```bash
-watch -n 5 'du -sh /expanse/lustre/projects/cso100/$USER/elp_container/ELP-CNNvsRNN/data/'
+watch -n 5 'du -sh /expanse/lustre/projects/cso100/$USER/elp_container/ELP-CNNvsRNN-v2/data/'
 ```
 
 ---
 
 # Running Experiments
 
-### Local Terminal:
+### Local Terminal (current package entrypoints):
 
 ```bash
-python cross_validation_experiment.py cnn  # or rnn
+python3 -m elp_rumble.training.train_compare
+python3 -m elp_rumble.training.train_cnn
+```
+
+Optional train command with overrides:
+```bash
+python3 -m elp_rumble.training.train_cnn --epochs 10 --batch_size 32 --lr 1e-4
+```
+
+### Legacy scripts (deprecated, kept under `Legacy/`):
+
+```bash
+python3 Legacy/cross_validation_experiment.py cnn  # or rnn
 ```
 
 ### SLURM Batch Job:
@@ -455,8 +468,8 @@ cat train.o41166992.exp-14-58
 ## View Results
 
 ```bash
-python view_cross_validation_results.py
-vim train.py  # edit best config
+python3 Legacy/view_cross_validation_results.py
+vim Legacy/train.py  # edit best config
 ```
 
 ---
@@ -464,7 +477,7 @@ vim train.py  # edit best config
 ## Train Final Model
 
 ```bash
-python train.py cnn  # or rnn
+python3 -m elp_rumble.training.train_cnn
 ```
 
 Or submit with:
