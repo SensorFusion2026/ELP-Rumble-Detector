@@ -59,9 +59,10 @@ def main():
     print(f"pos_train_clips_count: {pos_train_clips_count}")
     print(f"pos_test_clips_count: {pos_test_clips_count}")
 
-    DEFAULT_TRAIN_RATIO = 0.3
-    DEFAULT_MAX_TRAIN = 4784
-    DEFAULT_MAX_TEST  = 10698
+    # Fallbacks should mirror requested train/test intent when positives are absent.
+    DEFAULT_TRAIN_RATIO = 0.8
+    DEFAULT_MAX_TRAIN = 10698
+    DEFAULT_MAX_TEST  = 4784
 
     have_train = pos_train_clips_count > 0
     have_test  = pos_test_clips_count > 0
@@ -82,12 +83,19 @@ def main():
     if not have_test:
         print(f"No positive test clips found, default neg test clips: {max_test_clips}")
 
-    num_neg_train_input_wavs = int(len(neg_wav_files)*train_ratio)
-    num_neg_test_input_wavs = len(neg_wav_files)-num_neg_train_input_wavs
-    print(f"Using {num_neg_train_input_wavs} neg input wavs for creating training clips and {num_neg_test_input_wavs} neg input wavs for creating testing clips.")
+    if len(neg_wav_files) < 2:
+        raise ValueError("Need at least 2 negative wav files to create train/test split.")
 
     # Train test split of input .wavs
-    neg_train_wavs, neg_test_wavs = train_test_split(neg_wav_files, test_size=num_neg_test_input_wavs, random_state=42)
+    test_ratio = 1.0 - train_ratio
+    neg_train_wavs, neg_test_wavs = train_test_split(
+        neg_wav_files,
+        test_size=test_ratio,
+        random_state=42,
+    )
+    num_neg_train_input_wavs = len(neg_train_wavs)
+    num_neg_test_input_wavs = len(neg_test_wavs)
+    print(f"Using {num_neg_train_input_wavs} neg input wavs for creating training clips and {num_neg_test_input_wavs} neg input wavs for creating testing clips.")
     print(f"Train test split performed.")
     print(f"Training neg input wav files: \n{neg_train_wavs}")
     print(f"Testing neg input wav files: \n{neg_test_wavs}")
