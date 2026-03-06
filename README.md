@@ -318,7 +318,7 @@ cp .env.example .env
 Edit the .env file with your local data path:
 Open the .env file in a text editor and change the path to point
 to where you stored the ELP Cornell Data folder. For example:
-CORNELL_DATA_ROOT="/Users/rileydenn/ELP_Cornell_Data"
+CORNELL_DATA_ROOT="/Users/username/ELP_Cornell_Data"
 You can either use nano or the editor of your choosing.
 ```bash
 nano .env
@@ -326,32 +326,53 @@ nano .env
 
 ---
 
-## Data Preprocessing (Suggested to do on your local machine)
+# Data Preprocessing (Suggested to do on your local machine)
 The `elp_rumble.data_creation` package contains all of the necessary scripts to convert the Elephant data from raw 24-hour audio clips, to audio clippings of 5 seconds, to tfrecords of audio with appropriate labels, and finally to the tfrecords of spectrograms. These scripts are only helpful if you have access to the ELP data provided by Cornell.
 
-Ensure you are in the correct location and your local venv is activated:
+## Rumble Data Split Policy (Current)
+
+This project now uses a positive-driven split policy for rumble preprocessing:
+
+- Seen positives: all clips in `data/clips_train_val/pos_pnnn_clips`.
+- Holdout positives: all Dzanga clips in `data/clips_holdout_test/pos_dzanga_clips`.
+- Seen split: positives are split into `train/validate` at `80/20`.
+- Seen negatives: selected to match seen positive counts for `train` and `validate`.
+- Holdout test: uses all Dzanga positives and an equal number of holdout negatives.
+- Result: test can be larger than train by design, because holdout test intentionally keeps all Dzanga positives.
+
+### Split Controls
+
+- `TRAIN_FRAC`: fraction for seen positive training split (default `0.8`).
+- `SPLIT_SEED`: random seed for reproducible sampling/shuffling (default `42`).
+
+### Pipeline Order
+
+Run from repo root with the project virtual environment active:
+
 ```bash
-cd /path/to/your/ElephantListeningProject
-source elp-venv/bin/activate
-cd ELP-CNNvsRNN-v2
+python -m elp_rumble.data_creation.pos_audio_clips --mode train
+python -m elp_rumble.data_creation.pos_audio_clips --mode test
+python -m elp_rumble.data_creation.neg_audio_clips
+python -m elp_rumble.data_creation.create_tfrecords
+python -m elp_rumble.data_creation.convert_audio_to_spec_tfrecords
 ```
 
-Cut audio clippings:
+### Verification Checklist
+
+After generation, verify counts/sizes:
+
 ```bash
-python3 -m elp_rumble.data_creation.pos_audio_clips --mode train
-python3 -m elp_rumble.data_creation.pos_audio_clips --mode test
-python3 -m elp_rumble.data_creation.neg_audio_clips
+find data/clips_train_val/pos_pnnn_clips -type f -name '*.wav' | wc -l
+find data/clips_holdout_test/pos_dzanga_clips -type f -name '*.wav' | wc -l
+find data/clips_train_val/neg_pnnn_gunshot_clips -type f -name '*.wav' | wc -l
+find data/clips_holdout_test/neg_pnnn_gunshot_clips -type f -name '*.wav' | wc -l
+ls -lh data/tfrecords/tfrecords_audio/*.tfrecord
+ls -lh data/tfrecords/tfrecords_spectrogram/*.tfrecord
 ```
 
-Convert clips into tfrecords, then convert audio tfrecords into spectrograms:
-```bash
-python3 -m elp_rumble.data_creation.create_tfrecords
-python3 -m elp_rumble.data_creation.convert_audio_to_spec_tfrecords
-```
+Split manifest is written to:
 
-Once TFRecords are created, no manual path edits are required for CNN. CNN data paths come from `src/elp_rumble/input_pipeline/spectrogram_tfrecords.py` and `src/elp_rumble/config/paths.py`.
-
-For RNN-only workflows, dataset file names are defined in `src/elp_rumble/models/rnn_config.py`
+- `data/tfrecords/tfrecords_audio/clip_splits.csv`
 
 ---
 
