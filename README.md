@@ -326,68 +326,48 @@ nano .env
 
 ---
 
-# Data Preprocessing (Suggested to do on your local machine)
-The `elp_rumble.data_creation` package now follows the same staged structure as the gunshot repo:
+# Data creation
 
-1. `create_clips_plan.py`: builds one source-of-truth clip plan CSV.
-2. `cut_wav_clips.py`: cuts both positive and negative 5s clips from raw WAVs.
-3. `create_splits.py`: builds split CSV(s) from the clip plan.
-4. `create_tfrecords.py`: converts split-defined clips directly into spectrogram TFRecords.
+⚠️ **IMPORTANT:** Steps **1** and **3** create shared, version-controlled artifacts.  
+⚠️ **Do NOT run them unless the team agrees to change the dataset.**  
+⚠️ **In normal use, you should ONLY run steps 2 and 4.**
 
-These scripts require access to the Cornell raw data paths configured in `.env`.
+1) **Clip plan (source of truth; committed - ⚠️ DO NOT rerun casually)**
+- Run: `python -m elp_rumble.data_creation.create_clips_plan`
+- Output: `src/elp_rumble/data_creation/clips_plan.csv`
 
-## Rumble Data Split Policy (Current)
+2) **Cut clips (derived; safe to run)**
+- Run: `python -m elp_rumble.data_creation.cut_wav_clips`
+- Output: `data/wav_clips/{pos,neg}/...`
 
-This project uses a positive-driven split policy:
+3) **Splits (committed - ⚠️ DO NOT rerun casually)**
+- Run: `python -m elp_rumble.data_creation.create_splits`
+- Output: `src/elp_rumble/data_creation/splits/{model1,model3}.csv`
 
-- Seen positives: PNNN-derived rumble clips are split into `train/validate` at `80/20`.
-- Holdout positives: all Dzanga rumble clips are assigned to `test`.
-- Seen negatives: sampled to match seen positive totals, then split to match `train/validate` positive counts.
-- Holdout negatives: sampled to match Dzanga positive count and assigned to `test`.
-- Result: `test` can be larger than `train` by design because Dzanga holdout is intentionally kept intact.
+Rumble split policy enforced by `create_splits.py`:
+- Seen PNNN positives split into `train/validate` using `TRAIN_FRAC` (default `0.8`).
+- Dzanga positives assigned only to `test` (holdout).
+- Negatives matched to positive counts per split.
+- `model1`: feasibility split with exactly 60 positive + 60 negative clips total.
+- `model3`: full production split.
 
-### Split Controls
+4) **TFRecords (derived; safe to run)**
 
-- `TRAIN_FRAC`: fraction for seen positive training split (default `0.8`).
-- `SPLIT_SEED`: random seed for reproducible split sampling (default `42`).
+- Run (default: `MODEL=model3`):  
+  `python -m elp_rumble.data_creation.create_tfrecords`
 
-### Split Outputs
+- Optional environment variables:  
+  - MODEL: `model1`|`model3` (default: model3)
 
-- `model1.csv`: feasibility set with exactly `60` positive + `60` negative clips.
-  : Dzanga positives are only used in `test` for holdout semantics.
-- `model3.csv`: full production split using all available clips under current policy.
+- Examples:  
+  `MODEL=model1 python -m elp_rumble.data_creation.create_tfrecords`  
+  `MODEL=model3 python -m elp_rumble.data_creation.create_tfrecords`
 
-### Pipeline Order
-
-Run from repo root with the project virtual environment active:
-
-```bash
-python -m elp_rumble.data_creation.create_clips_plan
-python -m elp_rumble.data_creation.cut_wav_clips
-python -m elp_rumble.data_creation.create_splits
-MODEL=model1 python -m elp_rumble.data_creation.create_tfrecords
-MODEL=model3 python -m elp_rumble.data_creation.create_tfrecords
-```
-
-### Verification Checklist
-
-After generation, verify counts/sizes:
-
-```bash
-find data/wav_clips -type f -name '*.wav' | wc -l
-ls -lh src/elp_rumble/data_creation/splits/model3.csv
-ls -lh src/elp_rumble/data_creation/splits/model1.csv
-ls -lh data/tfrecords/tfrecords_spectrogram/*.tfrecord
-ls -lh data/tfrecords/tfrecords_spectrogram/model1/*.tfrecord
-```
-
-Split artifacts are written to:
-
-- `src/elp_rumble/data_creation/clips_plan.csv`
-- `src/elp_rumble/data_creation/splits/model1.csv`
-- `src/elp_rumble/data_creation/splits/model3.csv`
-- `data/tfrecords/tfrecords_spectrogram/clip_splits.csv`
-- `data/tfrecords/tfrecords_spectrogram/model1/clip_splits.csv`
+- Output (single run writes both RNN and CNN artifacts):  
+  `data/tfrecords/tfrecords_audio/model3/{train,validate,test}.tfrecord` (model3)  
+  `data/tfrecords/tfrecords_audio/model1/{train,validate,test}.tfrecord` (model1)  
+  `data/tfrecords/tfrecords_spectrogram/model3/{train,validate,test}.tfrecord` (model3)  
+  `data/tfrecords/tfrecords_spectrogram/model1/{train,validate,test}.tfrecord` (model1)
 
 ---
 
