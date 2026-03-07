@@ -74,6 +74,10 @@ else:
 
 DATA_ROOT = PROJECT_ROOT / "data"
 
+# Pipeline roots
+WAV_CLIPS_ROOT = DATA_ROOT / "wav_clips"
+SPLITS_ROOT = DATA_ROOT / "splits"
+
 # ------------- Preprocessed Clips Paths -------------
 CLIPS_TRAIN_VAL_ROOT = DATA_ROOT / "clips_train_val"
 CLIPS_HOLDOUT_TEST_ROOT = DATA_ROOT / "clips_holdout_test"
@@ -107,6 +111,8 @@ def ensure_directories() -> None:
     """
     for p in [
         DATA_ROOT,
+        WAV_CLIPS_ROOT,
+        SPLITS_ROOT,
         CLIPS_TRAIN_VAL_ROOT,
         CLIPS_HOLDOUT_TEST_ROOT,
         POS_TRAIN_VAL_CLIPS_DIR,

@@ -327,34 +327,46 @@ nano .env
 ---
 
 # Data Preprocessing (Suggested to do on your local machine)
-The `elp_rumble.data_creation` package contains all of the necessary scripts to convert the Elephant data from raw 24-hour audio clips, to audio clippings of 5 seconds, to tfrecords of audio with appropriate labels, and finally to the tfrecords of spectrograms. These scripts are only helpful if you have access to the ELP data provided by Cornell.
+The `elp_rumble.data_creation` package now follows the same staged structure as the gunshot repo:
+
+1. `create_clips_plan.py`: builds one source-of-truth clip plan CSV.
+2. `cut_wav_clips.py`: cuts both positive and negative 5s clips from raw WAVs.
+3. `create_splits.py`: builds split CSV(s) from the clip plan.
+4. `create_tfrecords.py`: converts split-defined clips directly into spectrogram TFRecords.
+
+These scripts require access to the Cornell raw data paths configured in `.env`.
 
 ## Rumble Data Split Policy (Current)
 
-This project now uses a positive-driven split policy for rumble preprocessing:
+This project uses a positive-driven split policy:
 
-- Seen positives: all clips in `data/clips_train_val/pos_pnnn_clips`.
-- Holdout positives: all Dzanga clips in `data/clips_holdout_test/pos_dzanga_clips`.
-- Seen split: positives are split into `train/validate` at `80/20`.
-- Seen negatives: selected to match seen positive counts for `train` and `validate`.
-- Holdout test: uses all Dzanga positives and an equal number of holdout negatives.
-- Result: test can be larger than train by design, because holdout test intentionally keeps all Dzanga positives.
+- Seen positives: PNNN-derived rumble clips are split into `train/validate` at `80/20`.
+- Holdout positives: all Dzanga rumble clips are assigned to `test`.
+- Seen negatives: sampled to match seen positive totals, then split to match `train/validate` positive counts.
+- Holdout negatives: sampled to match Dzanga positive count and assigned to `test`.
+- Result: `test` can be larger than `train` by design because Dzanga holdout is intentionally kept intact.
 
 ### Split Controls
 
 - `TRAIN_FRAC`: fraction for seen positive training split (default `0.8`).
-- `SPLIT_SEED`: random seed for reproducible sampling/shuffling (default `42`).
+- `SPLIT_SEED`: random seed for reproducible split sampling (default `42`).
+
+### Split Outputs
+
+- `model1.csv`: feasibility set with exactly `60` positive + `60` negative clips.
+  : Dzanga positives are only used in `test` for holdout semantics.
+- `model3.csv`: full production split using all available clips under current policy.
 
 ### Pipeline Order
 
 Run from repo root with the project virtual environment active:
 
 ```bash
-python -m elp_rumble.data_creation.pos_audio_clips --mode train
-python -m elp_rumble.data_creation.pos_audio_clips --mode test
-python -m elp_rumble.data_creation.neg_audio_clips
-python -m elp_rumble.data_creation.create_tfrecords
-python -m elp_rumble.data_creation.convert_audio_to_spec_tfrecords
+python -m elp_rumble.data_creation.create_clips_plan
+python -m elp_rumble.data_creation.cut_wav_clips
+python -m elp_rumble.data_creation.create_splits
+MODEL=model1 python -m elp_rumble.data_creation.create_tfrecords
+MODEL=model3 python -m elp_rumble.data_creation.create_tfrecords
 ```
 
 ### Verification Checklist
@@ -362,17 +374,20 @@ python -m elp_rumble.data_creation.convert_audio_to_spec_tfrecords
 After generation, verify counts/sizes:
 
 ```bash
-find data/clips_train_val/pos_pnnn_clips -type f -name '*.wav' | wc -l
-find data/clips_holdout_test/pos_dzanga_clips -type f -name '*.wav' | wc -l
-find data/clips_train_val/neg_pnnn_gunshot_clips -type f -name '*.wav' | wc -l
-find data/clips_holdout_test/neg_pnnn_gunshot_clips -type f -name '*.wav' | wc -l
-ls -lh data/tfrecords/tfrecords_audio/*.tfrecord
+find data/wav_clips -type f -name '*.wav' | wc -l
+ls -lh src/elp_rumble/data_creation/splits/model3.csv
+ls -lh src/elp_rumble/data_creation/splits/model1.csv
 ls -lh data/tfrecords/tfrecords_spectrogram/*.tfrecord
+ls -lh data/tfrecords/tfrecords_spectrogram/model1/*.tfrecord
 ```
 
-Split manifest is written to:
+Split artifacts are written to:
 
-- `data/tfrecords/tfrecords_audio/clip_splits.csv`
+- `src/elp_rumble/data_creation/clips_plan.csv`
+- `src/elp_rumble/data_creation/splits/model1.csv`
+- `src/elp_rumble/data_creation/splits/model3.csv`
+- `data/tfrecords/tfrecords_spectrogram/clip_splits.csv`
+- `data/tfrecords/tfrecords_spectrogram/model1/clip_splits.csv`
 
 ---
 
@@ -385,7 +400,6 @@ rsync -avh --progress \
 your_username@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN-v2/data
 
 rsync -avh --progress \
-"/path/to/local/project/repo/ELP-CNNvsRNN-v2/data/tfrecords_audio" \
 "/path/to/local/project/repo/ELP-CNNvsRNN-v2/data/tfrecords_spectrogram" \
 your_username@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN-v2/data/
 ```
