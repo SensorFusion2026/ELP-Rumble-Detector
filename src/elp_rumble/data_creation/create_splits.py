@@ -1,13 +1,10 @@
 # src/elp_rumble/data_creation/create_splits.py
 # Usage: python -m elp_rumble.data_creation.create_splits
 
-from pathlib import Path
 import os
 import pandas as pd
+from elp_rumble.config.paths import CLIPS_PLAN_CSV, SPLITS_DIR
 
-HERE = Path(__file__).resolve().parent
-PLAN_CSV = HERE / "clips_plan.csv"
-SPLITS_DIR = HERE / "splits"
 SPLITS_DIR.mkdir(parents=True, exist_ok=True)
 
 SEED = int(os.getenv("SPLIT_SEED", "42"))
@@ -19,9 +16,9 @@ if not (0.0 < TRAIN_FRAC < 1.0):
 MODEL1_POS_TOTAL = 60
 MODEL1_NEG_TOTAL = 60
 
-# Train/validate split for seen subset in model1
-MODEL1_TEST_POS = MODEL1_POS_TOTAL // 2  # Dzanga holdout positives
-MODEL1_SEEN_POS = MODEL1_POS_TOTAL - MODEL1_TEST_POS
+# Train/validate split for train/validation subset in model1
+MODEL1_TEST_POS = MODEL1_POS_TOTAL // 2  # Dzanga holdout test positives
+MODEL1_TRAIN_VAL_POS = MODEL1_POS_TOTAL - MODEL1_TEST_POS
 
 
 def _shuffle(df: pd.DataFrame, seed: int) -> pd.DataFrame:
@@ -60,68 +57,72 @@ def _assemble_split_df(
 
 
 def _build_model3(
-    seen_pos: pd.DataFrame,
-    holdout_pos: pd.DataFrame,
-    seen_neg_pool: pd.DataFrame,
-    holdout_neg_pool: pd.DataFrame,
+    train_val_pos: pd.DataFrame,
+    holdout_test_pos: pd.DataFrame,
+    train_val_neg_pool: pd.DataFrame,
+    holdout_test_neg_pool: pd.DataFrame,
 ) -> pd.DataFrame:
-    n_seen_pos = len(seen_pos)
-    n_train_pos = int(TRAIN_FRAC * n_seen_pos)
+    n_train_val_pos = len(train_val_pos)
+    n_train_pos = int(TRAIN_FRAC * n_train_val_pos)
 
-    train_pos = seen_pos.iloc[:n_train_pos].copy()
-    validate_pos = seen_pos.iloc[n_train_pos:].copy()
+    train_pos = train_val_pos.iloc[:n_train_pos].copy()
+    validate_pos = train_val_pos.iloc[n_train_pos:].copy()
 
-    needed_seen_neg = len(train_pos) + len(validate_pos)
-    if len(seen_neg_pool) < needed_seen_neg:
+    needed_train_val_neg = len(train_pos) + len(validate_pos)
+    if len(train_val_neg_pool) < needed_train_val_neg:
         raise ValueError(
-            f"Insufficient seen negatives ({len(seen_neg_pool)}) for required seen positives ({needed_seen_neg})."
+            f"Insufficient train/validation negatives ({len(train_val_neg_pool)}) "
+            f"for required train/validation positives ({needed_train_val_neg})."
         )
 
-    seen_neg = seen_neg_pool.iloc[:needed_seen_neg].copy().reset_index(drop=True)
-    train_neg = seen_neg.iloc[:len(train_pos)].copy()
-    validate_neg = seen_neg.iloc[len(train_pos):].copy()
+    train_val_neg = train_val_neg_pool.iloc[:needed_train_val_neg].copy().reset_index(drop=True)
+    train_neg = train_val_neg.iloc[:len(train_pos)].copy()
+    validate_neg = train_val_neg.iloc[len(train_pos):].copy()
 
-    if len(holdout_neg_pool) < len(holdout_pos):
+    if len(holdout_test_neg_pool) < len(holdout_test_pos):
         raise ValueError(
-            f"Insufficient holdout negatives ({len(holdout_neg_pool)}) for holdout positives ({len(holdout_pos)})."
+            f"Insufficient holdout test negatives ({len(holdout_test_neg_pool)}) "
+            f"for holdout test positives ({len(holdout_test_pos)})."
         )
-    test_neg = holdout_neg_pool.iloc[:len(holdout_pos)].copy()
+    test_neg = holdout_test_neg_pool.iloc[:len(holdout_test_pos)].copy()
 
-    return _assemble_split_df(train_pos, train_neg, validate_pos, validate_neg, holdout_pos, test_neg)
+    return _assemble_split_df(train_pos, train_neg, validate_pos, validate_neg, holdout_test_pos, test_neg)
 
 
 def _build_model1(
-    seen_pos: pd.DataFrame,
-    holdout_pos: pd.DataFrame,
-    seen_neg_pool: pd.DataFrame,
-    holdout_neg_pool: pd.DataFrame,
+    train_val_pos: pd.DataFrame,
+    holdout_test_pos: pd.DataFrame,
+    train_val_neg_pool: pd.DataFrame,
+    holdout_test_neg_pool: pd.DataFrame,
 ) -> pd.DataFrame:
-    if len(seen_pos) < MODEL1_SEEN_POS:
-        raise ValueError(f"Need at least {MODEL1_SEEN_POS} seen positives for model1.")
-    if len(holdout_pos) < MODEL1_TEST_POS:
-        raise ValueError(f"Need at least {MODEL1_TEST_POS} holdout positives for model1.")
+    if len(train_val_pos) < MODEL1_TRAIN_VAL_POS:
+        raise ValueError(f"Need at least {MODEL1_TRAIN_VAL_POS} train/validation positives for model1.")
+    if len(holdout_test_pos) < MODEL1_TEST_POS:
+        raise ValueError(f"Need at least {MODEL1_TEST_POS} holdout test positives for model1.")
 
-    seen_pos_small = seen_pos.iloc[:MODEL1_SEEN_POS].copy().reset_index(drop=True)
-    test_pos = holdout_pos.iloc[:MODEL1_TEST_POS].copy().reset_index(drop=True)
+    train_val_pos_small = train_val_pos.iloc[:MODEL1_TRAIN_VAL_POS].copy().reset_index(drop=True)
+    test_pos = holdout_test_pos.iloc[:MODEL1_TEST_POS].copy().reset_index(drop=True)
 
-    n_train_pos = int(TRAIN_FRAC * MODEL1_SEEN_POS)
-    train_pos = seen_pos_small.iloc[:n_train_pos].copy()
-    validate_pos = seen_pos_small.iloc[n_train_pos:].copy()
+    n_train_pos = int(TRAIN_FRAC * MODEL1_TRAIN_VAL_POS)
+    train_pos = train_val_pos_small.iloc[:n_train_pos].copy()
+    validate_pos = train_val_pos_small.iloc[n_train_pos:].copy()
 
-    needed_seen_neg = len(train_pos) + len(validate_pos)
-    if len(seen_neg_pool) < needed_seen_neg:
+    needed_train_val_neg = len(train_pos) + len(validate_pos)
+    if len(train_val_neg_pool) < needed_train_val_neg:
         raise ValueError(
-            f"Insufficient seen negatives ({len(seen_neg_pool)}) for required model1 seen positives ({needed_seen_neg})."
+            f"Insufficient train/validation negatives ({len(train_val_neg_pool)}) "
+            f"for required model1 train/validation positives ({needed_train_val_neg})."
         )
-    if len(holdout_neg_pool) < len(test_pos):
+    if len(holdout_test_neg_pool) < len(test_pos):
         raise ValueError(
-            f"Insufficient holdout negatives ({len(holdout_neg_pool)}) for required model1 holdout positives ({len(test_pos)})."
+            f"Insufficient holdout test negatives ({len(holdout_test_neg_pool)}) "
+            f"for required model1 holdout test positives ({len(test_pos)})."
         )
 
-    seen_neg_small = seen_neg_pool.iloc[:needed_seen_neg].copy().reset_index(drop=True)
-    train_neg = seen_neg_small.iloc[:len(train_pos)].copy()
-    validate_neg = seen_neg_small.iloc[len(train_pos):].copy()
-    test_neg = holdout_neg_pool.iloc[:len(test_pos)].copy().reset_index(drop=True)
+    train_val_neg_small = train_val_neg_pool.iloc[:needed_train_val_neg].copy().reset_index(drop=True)
+    train_neg = train_val_neg_small.iloc[:len(train_pos)].copy()
+    validate_neg = train_val_neg_small.iloc[len(train_pos):].copy()
+    test_neg = holdout_test_neg_pool.iloc[:len(test_pos)].copy().reset_index(drop=True)
 
     output = _assemble_split_df(train_pos, train_neg, validate_pos, validate_neg, test_pos, test_neg)
 
@@ -146,14 +147,14 @@ def _build_model1(
 
 
 def main():
-    if not PLAN_CSV.exists():
-        raise FileNotFoundError(f"Missing {PLAN_CSV}. Run create_clips_plan.py first.")
+    if not CLIPS_PLAN_CSV.exists():
+        raise FileNotFoundError(f"Missing {CLIPS_PLAN_CSV}. Run create_clips_plan.py first.")
 
-    plan = pd.read_csv(PLAN_CSV)
+    plan = pd.read_csv(CLIPS_PLAN_CSV)
     required = {
         "label",
         "location",
-        "split_hint",
+        "split",
         "source_wav_relpath",
         "clip_wav_relpath",
     }
@@ -161,16 +162,20 @@ def main():
     if missing:
         raise ValueError(f"clips_plan.csv missing columns: {sorted(missing)}")
 
-    seen_pos = _shuffle(plan[(plan["label"] == "pos") & (plan["split_hint"] == "seen")].copy(), SEED)
-    holdout_pos = plan[(plan["label"] == "pos") & (plan["split_hint"] == "holdout")].copy()
-    seen_neg_pool = _shuffle(plan[(plan["label"] == "neg") & (plan["split_hint"] == "seen")].copy(), SEED)
-    holdout_neg_pool = _shuffle(plan[(plan["label"] == "neg") & (plan["split_hint"] == "holdout")].copy(), SEED)
+    train_val_pos = _shuffle(plan[(plan["label"] == "pos") & (plan["split"] == "train_val")].copy(), SEED)
+    holdout_test_pos = plan[(plan["label"] == "pos") & (plan["split"] == "holdout_test")].copy()
+    train_val_neg_pool = _shuffle(
+        plan[(plan["label"] == "neg") & (plan["split"] == "train_val")].copy(), SEED
+    )
+    holdout_test_neg_pool = _shuffle(
+        plan[(plan["label"] == "neg") & (plan["split"] == "holdout_test")].copy(), SEED
+    )
 
-    if seen_pos.empty or holdout_pos.empty or seen_neg_pool.empty or holdout_neg_pool.empty:
+    if train_val_pos.empty or holdout_test_pos.empty or train_val_neg_pool.empty or holdout_test_neg_pool.empty:
         raise ValueError("Plan has empty required groups. Rebuild clips_plan.csv.")
 
-    model1 = _build_model1(seen_pos, holdout_pos, seen_neg_pool, holdout_neg_pool)
-    model3 = _build_model3(seen_pos, holdout_pos, seen_neg_pool, holdout_neg_pool)
+    model1 = _build_model1(train_val_pos, holdout_test_pos, train_val_neg_pool, holdout_test_neg_pool)
+    model3 = _build_model3(train_val_pos, holdout_test_pos, train_val_neg_pool, holdout_test_neg_pool)
 
     model1_csv = SPLITS_DIR / "model1.csv"
     model3_csv = SPLITS_DIR / "model3.csv"

@@ -9,7 +9,6 @@
 # 1) normalized audio TFRecords (for RNN)
 # 2) normalized spectrogram TFRecords (for CNN)
 
-from pathlib import Path
 import os
 import random
 import numpy as np
@@ -17,13 +16,18 @@ import pandas as pd
 import tensorflow as tf
 
 from .utils import compute_statistics, load_wav_file, write_tfrecords
-from elp_rumble.config.paths import TFRECORDS_AUDIO_DIR, TFRECORDS_SPECTROGRAM_DIR
+from elp_rumble.config.paths import (
+    TFRECORDS_AUDIO_DIR,
+    TFRECORDS_SPECTROGRAM_DIR,
+    SPLITS_DIR,
+    WAV_CLIPS_ROOT,
+)
 
 MODEL = os.getenv("MODEL", "model3").strip()
 if MODEL not in {"model1", "model3"}:
     raise ValueError("Invalid MODEL. Use MODEL=model1 or MODEL=model3.")
 
-SPLITS_CSV = Path(__file__).resolve().parent / "splits" / f"{MODEL}.csv"
+SPLITS_CSV = SPLITS_DIR / f"{MODEL}.csv"
 OUT_AUDIO_DIR = TFRECORDS_AUDIO_DIR / MODEL
 OUT_SPEC_DIR = TFRECORDS_SPECTROGRAM_DIR / MODEL
 OUT_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
@@ -65,7 +69,7 @@ def _build_entries(df):
             continue
 
         clip_rel = str(row["clip_wav_relpath"])
-        clip_abs = Path("data") / "wav_clips" / clip_rel
+        clip_abs = WAV_CLIPS_ROOT / clip_rel
         if not clip_abs.exists():
             skipped_missing += 1
             continue

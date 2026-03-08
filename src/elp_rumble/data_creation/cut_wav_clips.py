@@ -7,9 +7,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import apply_low_pass_filter, down_sample, save_audio_to_wav
-from elp_rumble.config.paths import RAW_ROOT, WAV_CLIPS_ROOT
-
-PLAN_CSV = Path(__file__).resolve().parent / "clips_plan.csv"
+from elp_rumble.config.paths import RAW_ROOT, WAV_CLIPS_ROOT, CLIPS_PLAN_CSV
 
 TARGET_SR = 4000
 CUTOFF_HZ = 200
@@ -28,10 +26,10 @@ def _dtype_for_width(sample_width: int):
 def main():
     if RAW_ROOT is None:
         raise ValueError("RAW_ROOT is not configured. Set ENVIRONMENT=local and CORNELL_DATA_ROOT.")
-    if not PLAN_CSV.exists():
-        raise FileNotFoundError(f"Missing plan file: {PLAN_CSV}. Run create_clips_plan.py first.")
+    if not CLIPS_PLAN_CSV.exists():
+        raise FileNotFoundError(f"Missing plan file: {CLIPS_PLAN_CSV}. Run create_clips_plan.py first.")
 
-    plan = pd.read_csv(PLAN_CSV)
+    plan = pd.read_csv(CLIPS_PLAN_CSV)
     required = {"source_wav_relpath", "start_s", "duration_s", "clip_wav_relpath"}
     missing = required - set(plan.columns)
     if missing:
@@ -61,20 +59,24 @@ def main():
             skipped_missing += 1
             continue
 
-        with wave.open(str(src_path), "rb") as w:
-            sr = w.getframerate()
-            sample_width = w.getsampwidth()
-            channels = w.getnchannels()
-            start_frame = int(start_s * sr)
-            n_frames = int(duration_s * sr)
+        try:
+            with wave.open(str(src_path), "rb") as w:
+                sr = w.getframerate()
+                sample_width = w.getsampwidth()
+                channels = w.getnchannels()
+                start_frame = int(start_s * sr)
+                n_frames = int(duration_s * sr)
 
-            try:
-                w.setpos(start_frame)
-            except wave.Error:
-                skipped_short += 1
-                continue
+                try:
+                    w.setpos(start_frame)
+                except wave.Error:
+                    skipped_short += 1
+                    continue
 
             frames = w.readframes(n_frames)
+        except wave.Error:
+            skipped_bad_format += 1
+            continue
 
         dtype = _dtype_for_width(sample_width)
         data = np.frombuffer(frames, dtype=dtype)

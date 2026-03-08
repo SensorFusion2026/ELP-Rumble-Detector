@@ -345,8 +345,8 @@ nano .env
 - Output: `src/elp_rumble/data_creation/splits/{model1,model3}.csv`
 
 Rumble split policy enforced by `create_splits.py`:
-- Seen PNNN positives split into `train/validate` using `TRAIN_FRAC` (default `0.8`).
-- Dzanga positives assigned only to `test` (holdout).
+- PNNN positives in the train/validation pool are split into `train/validate` using `TRAIN_FRAC` (default `0.8`).
+- Dzanga positives are assigned only to `test` (holdout test).
 - Negatives matched to positive counts per split.
 - `model1`: feasibility split with exactly 60 positive + 60 negative clips total.
 - `model3`: full production split.
