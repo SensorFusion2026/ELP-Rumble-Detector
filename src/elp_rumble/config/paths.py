@@ -44,14 +44,14 @@ if ENVIRONMENT == "local":
     POS_TRAIN_VAL2_METADATA_DIR = RAW_ROOT / "Rumble" / "Testing" / "PNNN"
     POS_TRAIN_VAL2_SOUNDS_DIR = RAW_ROOT / "Rumble" / "Testing" / "PNNN" / "Sounds"
 
-    # Holdout testing (Dzanga)
+    # Holdout testing (Dzanga) — also used for holdout-test negative planning
+    # via buffered exclusion around positive rumble annotations.
     POS_HOLDOUT_TEST_METADATA_DIR = RAW_ROOT / "Rumble" / "Testing" / "Dzanga"
     POS_HOLDOUT_TEST_SOUNDS_DIR = RAW_ROOT / "Rumble" / "Testing" / "Dzanga" / "Sounds"
 
     # -------------------- Negative raw data --------------------
-    # NOTE: This is 24hr .wavs containing gunshot sounds with long stretches of 
-    #       non-gunshot background noise in-between, to be used as negatives for 
-    #       rumble detector.
+    # Train/val negatives: 24hr PNNN WAVs with long stretches of non-gunshot
+    # background noise, repurposed as rumble-detector negatives.
     NEG_SOURCE_INPUT_DIR = RAW_ROOT / "Gunshot" / "Testing" / "PNNN" / "Sounds"
 
 else:

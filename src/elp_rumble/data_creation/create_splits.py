@@ -1,191 +1,151 @@
 # src/elp_rumble/data_creation/create_splits.py
 # Usage: python -m elp_rumble.data_creation.create_splits
 
-import os
 import pandas as pd
+import numpy as np
+
 from elp_rumble.config.paths import CLIPS_PLAN_CSV, SPLITS_DIR
 
+# -----------------------
+# Paths
+# -----------------------
 SPLITS_DIR.mkdir(parents=True, exist_ok=True)
 
-SEED = int(os.getenv("SPLIT_SEED", "42"))
-TRAIN_FRAC = float(os.getenv("TRAIN_FRAC", "0.8"))
-if not (0.0 < TRAIN_FRAC < 1.0):
-    raise ValueError(f"Invalid TRAIN_FRAC={TRAIN_FRAC}. Require 0 < TRAIN_FRAC < 1.")
+# -----------------------
+# Settings
+# -----------------------
+SEED = 42
+RNG = np.random.default_rng(SEED)
 
-# Feasibility model target totals (overall, not per split)
-MODEL1_POS_TOTAL = 60
-MODEL1_NEG_TOTAL = 60
+TRAIN_FRAC = 0.8
+# val = remainder (non-Dzanga only; Dzanga clips are always test)
 
-# Train/validate split for train/validation subset in model1
-MODEL1_TEST_POS = MODEL1_POS_TOTAL // 2  # Dzanga holdout test positives
-MODEL1_TRAIN_VAL_POS = MODEL1_POS_TOTAL - MODEL1_TEST_POS
+MODEL1_CAPS = {
+    "train_val":    {"pos": 60, "neg": 60},
+    "holdout_test": {"pos": 30, "neg": 30},
+}
 
-
-def _shuffle(df: pd.DataFrame, seed: int) -> pd.DataFrame:
-    return df.sample(frac=1.0, random_state=seed).reset_index(drop=True)
-
-
-def _assemble_split_df(
-    train_pos: pd.DataFrame,
-    train_neg: pd.DataFrame,
-    validate_pos: pd.DataFrame,
-    validate_neg: pd.DataFrame,
-    test_pos: pd.DataFrame,
-    test_neg: pd.DataFrame,
-) -> pd.DataFrame:
-    train_pos = train_pos.copy()
-    train_neg = train_neg.copy()
-    validate_pos = validate_pos.copy()
-    validate_neg = validate_neg.copy()
-    test_pos = test_pos.copy()
-    test_neg = test_neg.copy()
-
-    train_pos["split"] = "train"
-    train_neg["split"] = "train"
-    validate_pos["split"] = "validate"
-    validate_neg["split"] = "validate"
-    test_pos["split"] = "test"
-    test_neg["split"] = "test"
-
-    split_df = pd.concat(
-        [train_pos, train_neg, validate_pos, validate_neg, test_pos, test_neg],
-        ignore_index=True,
-    )
-    return split_df[
-        ["split", "label", "location", "source_wav_relpath", "clip_wav_relpath"]
-    ].sort_values(["split", "label", "location", "clip_wav_relpath"])
+MODEL2_FRAC = 0.5
+MODEL3_FRAC = 1.0
 
 
-def _build_model3(
-    train_val_pos: pd.DataFrame,
-    holdout_test_pos: pd.DataFrame,
-    train_val_neg_pool: pd.DataFrame,
-    holdout_test_neg_pool: pd.DataFrame,
-) -> pd.DataFrame:
-    n_train_val_pos = len(train_val_pos)
-    n_train_pos = int(TRAIN_FRAC * n_train_val_pos)
+# -----------------------
+# Helper functions
+# -----------------------
+def subsample_by_wav(df: pd.DataFrame, frac: float) -> pd.DataFrame:
+    """
+    Subsample the dataset by selecting a fraction of unique source WAV files
+    and keeping all clips that originate from those WAVs.
 
-    train_pos = train_val_pos.iloc[:n_train_pos].copy()
-    validate_pos = train_val_pos.iloc[n_train_pos:].copy()
+    This is used to control dataset size for different model versions (e.g.,
+    Model 2 uses 50% of available WAVs), while avoiding clip-level leakage.
+    """
+    wavs = df["source_wav_relpath"].drop_duplicates().to_numpy()
+    RNG.shuffle(wavs)
 
-    needed_train_val_neg = len(train_pos) + len(validate_pos)
-    if len(train_val_neg_pool) < needed_train_val_neg:
-        raise ValueError(
-            f"Insufficient train/validation negatives ({len(train_val_neg_pool)}) "
-            f"for required train/validation positives ({needed_train_val_neg})."
-        )
+    k = max(1, int(frac * len(wavs)))
+    keep = set(wavs[:k])
+    return df[df["source_wav_relpath"].isin(keep)].copy()
 
-    train_val_neg = train_val_neg_pool.iloc[:needed_train_val_neg].copy().reset_index(drop=True)
-    train_neg = train_val_neg.iloc[:len(train_pos)].copy()
-    validate_neg = train_val_neg.iloc[len(train_pos):].copy()
+def split_by_wav(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Assign train/val/test splits using location-based holdout and WAV-level grouping.
 
-    if len(holdout_test_neg_pool) < len(holdout_test_pos):
-        raise ValueError(
-            f"Insufficient holdout test negatives ({len(holdout_test_neg_pool)}) "
-            f"for holdout test positives ({len(holdout_test_pos)})."
-        )
-    test_neg = holdout_test_neg_pool.iloc[:len(holdout_test_pos)].copy()
+    Clips marked holdout_test in clips_plan (Dzanga) -> test split.
+    Clips marked train_val in clips_plan (PNNN) -> train/val by source WAV.
 
-    return _assemble_split_df(train_pos, train_neg, validate_pos, validate_neg, holdout_test_pos, test_neg)
+    All clips from the same source WAV are placed in the same split to prevent
+    background and recording-condition leakage across splits.
+    """
+    holdout = df[df["split"] == "holdout_test"].copy()
+    train_val = df[df["split"] == "train_val"].copy()
+
+    holdout["split"] = "test"
+
+    wavs = train_val["source_wav_relpath"].drop_duplicates().to_numpy()
+    RNG.shuffle(wavs)
+    n_train = int(TRAIN_FRAC * len(wavs))
+    train_wavs = set(wavs[:n_train])
+
+    train_val["split"] = "val"
+    train_val.loc[train_val["source_wav_relpath"].isin(train_wavs), "split"] = "train"
+
+    return pd.concat([holdout, train_val], ignore_index=True)
+
+def build_model1(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build a small feasibility dataset using absolute caps per split+label.
+    """
+    parts = []
+    for split, caps in MODEL1_CAPS.items():
+        for label, cap in caps.items():
+            sub = df[(df["split"] == split) & (df["label"] == label)]
+            if sub.empty:
+                continue
+            sub = sub.sample(frac=1.0, random_state=SEED)
+            parts.append(sub.head(cap))
+
+    if not parts:
+        return df.head(0).copy()
+
+    return pd.concat(parts, ignore_index=True)
 
 
-def _build_model1(
-    train_val_pos: pd.DataFrame,
-    holdout_test_pos: pd.DataFrame,
-    train_val_neg_pool: pd.DataFrame,
-    holdout_test_neg_pool: pd.DataFrame,
-) -> pd.DataFrame:
-    if len(train_val_pos) < MODEL1_TRAIN_VAL_POS:
-        raise ValueError(f"Need at least {MODEL1_TRAIN_VAL_POS} train/validation positives for model1.")
-    if len(holdout_test_pos) < MODEL1_TEST_POS:
-        raise ValueError(f"Need at least {MODEL1_TEST_POS} holdout test positives for model1.")
+def write_split(df: pd.DataFrame, path):
+    cols = ["split", "label", "location", "source_wav_relpath", "clip_wav_relpath"]
+    df = df[cols].sort_values(cols)
+    df.to_csv(path, index=False)
+    print(f"Wrote {path} ({len(df)} rows)")
 
-    train_val_pos_small = train_val_pos.iloc[:MODEL1_TRAIN_VAL_POS].copy().reset_index(drop=True)
-    test_pos = holdout_test_pos.iloc[:MODEL1_TEST_POS].copy().reset_index(drop=True)
 
-    n_train_pos = int(TRAIN_FRAC * MODEL1_TRAIN_VAL_POS)
-    train_pos = train_val_pos_small.iloc[:n_train_pos].copy()
-    validate_pos = train_val_pos_small.iloc[n_train_pos:].copy()
-
-    needed_train_val_neg = len(train_pos) + len(validate_pos)
-    if len(train_val_neg_pool) < needed_train_val_neg:
-        raise ValueError(
-            f"Insufficient train/validation negatives ({len(train_val_neg_pool)}) "
-            f"for required model1 train/validation positives ({needed_train_val_neg})."
-        )
-    if len(holdout_test_neg_pool) < len(test_pos):
-        raise ValueError(
-            f"Insufficient holdout test negatives ({len(holdout_test_neg_pool)}) "
-            f"for required model1 holdout test positives ({len(test_pos)})."
-        )
-
-    train_val_neg_small = train_val_neg_pool.iloc[:needed_train_val_neg].copy().reset_index(drop=True)
-    train_neg = train_val_neg_small.iloc[:len(train_pos)].copy()
-    validate_neg = train_val_neg_small.iloc[len(train_pos):].copy()
-    test_neg = holdout_test_neg_pool.iloc[:len(test_pos)].copy().reset_index(drop=True)
-
-    output = _assemble_split_df(train_pos, train_neg, validate_pos, validate_neg, test_pos, test_neg)
-
-    n_pos = int((output["label"] == "pos").sum())
-    n_neg = int((output["label"] == "neg").sum())
-    if n_pos != MODEL1_POS_TOTAL or n_neg != MODEL1_NEG_TOTAL:
-        raise ValueError(
-            f"Model1 count mismatch: pos={n_pos} (expected {MODEL1_POS_TOTAL}), "
-            f"neg={n_neg} (expected {MODEL1_NEG_TOTAL})."
-        )
-
-    # Guard Dzanga semantics: Dzanga positives should only appear in test.
-    bad_dzanga = output[
-        (output["label"] == "pos")
-        & (output["location"] == "dzanga")
-        & (output["split"] != "test")
-    ]
-    if not bad_dzanga.empty:
-        raise ValueError("Model1 split violation: Dzanga positives found outside test split.")
-
-    return output
+def summarize(df, name):
+    print(f"\n{name}")
+    print(df.groupby(["split", "location", "label"]).size())
 
 
 def main():
+    # -----------------------
+    # Load clip plan
+    # -----------------------
     if not CLIPS_PLAN_CSV.exists():
         raise FileNotFoundError(f"Missing {CLIPS_PLAN_CSV}. Run create_clips_plan.py first.")
 
     plan = pd.read_csv(CLIPS_PLAN_CSV)
-    required = {
-        "label",
-        "location",
-        "split",
-        "source_wav_relpath",
-        "clip_wav_relpath",
-    }
+
+    required = {"label", "location", "split", "source_wav_relpath", "clip_wav_relpath"}
     missing = required - set(plan.columns)
     if missing:
         raise ValueError(f"clips_plan.csv missing columns: {sorted(missing)}")
 
-    train_val_pos = _shuffle(plan[(plan["label"] == "pos") & (plan["split"] == "train_val")].copy(), SEED)
-    holdout_test_pos = plan[(plan["label"] == "pos") & (plan["split"] == "holdout_test")].copy()
-    train_val_neg_pool = _shuffle(
-        plan[(plan["label"] == "neg") & (plan["split"] == "train_val")].copy(), SEED
-    )
-    holdout_test_neg_pool = _shuffle(
-        plan[(plan["label"] == "neg") & (plan["split"] == "holdout_test")].copy(), SEED
-    )
+    # -----------------------
+    # Build splits
+    # -----------------------
 
-    if train_val_pos.empty or holdout_test_pos.empty or train_val_neg_pool.empty or holdout_test_neg_pool.empty:
-        raise ValueError("Plan has empty required groups. Rebuild clips_plan.csv.")
+    # Model 1: feasibility (small amount of data)
+    model1_base = build_model1(plan)
+    model1 = split_by_wav(model1_base)
 
-    model1 = _build_model1(train_val_pos, holdout_test_pos, train_val_neg_pool, holdout_test_neg_pool)
-    model3 = _build_model3(train_val_pos, holdout_test_pos, train_val_neg_pool, holdout_test_neg_pool)
+    # Model 2: scalability (50% of data)
+    model2_base = subsample_by_wav(plan, MODEL2_FRAC)
+    model2 = split_by_wav(model2_base)
 
-    model1_csv = SPLITS_DIR / "model1.csv"
-    model3_csv = SPLITS_DIR / "model3.csv"
-    model1.to_csv(model1_csv, index=False)
-    model3.to_csv(model3_csv, index=False)
+    # Model 3: performance (full data)
+    model3_base = subsample_by_wav(plan, MODEL3_FRAC)
+    model3 = split_by_wav(model3_base)
 
-    print(f"Wrote {model1_csv} ({len(model1)} rows)")
-    print(model1.groupby(["split", "label"]).size())
-    print(f"Wrote {model3_csv} ({len(model3)} rows)")
-    print(model3.groupby(["split", "label"]).size())
+    # -----------------------
+    # Write outputs
+    # -----------------------
+    write_split(model1, SPLITS_DIR / "model1.csv")
+    write_split(model2, SPLITS_DIR / "model2.csv")
+    write_split(model3, SPLITS_DIR / "model3.csv")
+
+    # -----------------------
+    # Print summaries
+    # -----------------------
+    summarize(model1, "MODEL 1 (Feasibility)")
+    summarize(model2, "MODEL 2 (Scaled)")
+    summarize(model3, "MODEL 3 (Performance)")
 
 
 if __name__ == "__main__":

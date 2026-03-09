@@ -342,14 +342,14 @@ nano .env
 
 3) **Splits (committed - ⚠️ DO NOT rerun casually)**
 - Run: `python -m elp_rumble.data_creation.create_splits`
-- Output: `src/elp_rumble/data_creation/splits/{model1,model3}.csv`
+- Output: `src/elp_rumble/data_creation/splits/{model1,model2,model3}.csv`
 
 Rumble split policy enforced by `create_splits.py`:
-- PNNN positives in the train/validation pool are split into `train/validate` using `TRAIN_FRAC` (default `0.8`).
-- Dzanga positives are assigned only to `test` (holdout test).
-- Negatives matched to positive counts per split.
-- `model1`: feasibility split with exactly 60 positive + 60 negative clips total.
-- `model3`: full production split.
+- Dzanga clips (holdout) are assigned to `test`; PNNN clips are split into `train/val` by source WAV using `TRAIN_FRAC` (default `0.8`).
+- Holdout-test negatives are sourced from Dzanga WAVs via buffered exclusion (`BUFFER_S=10s`) around positive rumble annotations (`location=dzanga`). Train/val negatives come from PNNN background WAVs (`location=pnnn`).
+- `model1`: feasibility split with split+label caps (30 pos + 60 neg train_val, 30 pos + 30 neg holdout_test).
+- `model2`: 50% WAV-level subsample (`MODEL2_FRAC=0.5`).
+- `model3`: full production split (`MODEL3_FRAC=1.0`).
 
 4) **TFRecords (derived; safe to run)**
 
@@ -357,17 +357,20 @@ Rumble split policy enforced by `create_splits.py`:
   `python -m elp_rumble.data_creation.create_tfrecords`
 
 - Optional environment variables:  
-  - MODEL: `model1`|`model3` (default: model3)
+  - MODEL: `model1`|`model2`|`model3` (default: model3)
 
 - Examples:  
   `MODEL=model1 python -m elp_rumble.data_creation.create_tfrecords`  
+  `MODEL=model2 python -m elp_rumble.data_creation.create_tfrecords`  
   `MODEL=model3 python -m elp_rumble.data_creation.create_tfrecords`
 
 - Output (single run writes both RNN and CNN artifacts):  
-  `data/tfrecords/tfrecords_audio/model3/{train,validate,test}.tfrecord` (model3)  
-  `data/tfrecords/tfrecords_audio/model1/{train,validate,test}.tfrecord` (model1)  
-  `data/tfrecords/tfrecords_spectrogram/model3/{train,validate,test}.tfrecord` (model3)  
-  `data/tfrecords/tfrecords_spectrogram/model1/{train,validate,test}.tfrecord` (model1)
+  `data/tfrecords/tfrecords_audio/model1/{train,val,test}.tfrecord` (model1)  
+  `data/tfrecords/tfrecords_audio/model2/{train,val,test}.tfrecord` (model2)  
+  `data/tfrecords/tfrecords_audio/model3/{train,val,test}.tfrecord` (model3)  
+  `data/tfrecords/tfrecords_spectrogram/model1/{train,val,test}.tfrecord` (model1)  
+  `data/tfrecords/tfrecords_spectrogram/model2/{train,val,test}.tfrecord` (model2)  
+  `data/tfrecords/tfrecords_spectrogram/model3/{train,val,test}.tfrecord` (model3)  
 
 ---
 

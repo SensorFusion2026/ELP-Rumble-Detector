@@ -3,7 +3,7 @@
 #   python -m elp_rumble.data_creation.create_tfrecords
 #
 # Optional environment variables:
-#   MODEL=model1|model3      (default: model3)
+#   MODEL=model1|model2|model3      (default: model3)
 #
 # This script writes BOTH:
 # 1) normalized audio TFRecords (for RNN)
@@ -24,8 +24,8 @@ from elp_rumble.config.paths import (
 )
 
 MODEL = os.getenv("MODEL", "model3").strip()
-if MODEL not in {"model1", "model3"}:
-    raise ValueError("Invalid MODEL. Use MODEL=model1 or MODEL=model3.")
+if MODEL not in {"model1", "model2", "model3"}:
+    raise ValueError("Invalid MODEL. Use MODEL=model1, MODEL=model2, or MODEL=model3.")
 
 SPLITS_CSV = SPLITS_DIR / f"{MODEL}.csv"
 OUT_AUDIO_DIR = TFRECORDS_AUDIO_DIR / MODEL
@@ -63,7 +63,7 @@ def _build_entries(df):
     for _, row in df.iterrows():
         split = str(row["split"])
         label = str(row["label"])
-        if split not in {"train", "validate", "test"}:
+        if split not in {"train", "val", "test"}:
             continue
         if label not in LABEL_MAP:
             continue
@@ -146,20 +146,20 @@ def main():
     rng = random.Random(SEED)
 
     train_entries = [e for e in entries if e["split"] == "train"]
-    validate_entries = [e for e in entries if e["split"] == "validate"]
+    val_entries = [e for e in entries if e["split"] == "val"]
     test_entries = [e for e in entries if e["split"] == "test"]
 
     rng.shuffle(train_entries)
-    rng.shuffle(validate_entries)
+    rng.shuffle(val_entries)
     rng.shuffle(test_entries)
 
     # -------- AUDIO TFRECORDS (RNN) --------
     train_audio = _dataset_from_entries(train_entries)
-    validate_audio = _dataset_from_entries(validate_entries)
+    val_audio = _dataset_from_entries(val_entries)
     test_audio = _dataset_from_entries(test_entries)
 
     audio_stats_dataset = train_audio.map(lambda x, _: x).concatenate(
-        validate_audio.map(lambda x, _: x)
+        val_audio.map(lambda x, _: x)
     )
     audio_mean, audio_std = compute_statistics(audio_stats_dataset)
 
@@ -168,7 +168,7 @@ def main():
         num_parallel_calls=tf.data.AUTOTUNE,
     ).shuffle(20000, reshuffle_each_iteration=False)
 
-    validate_audio = validate_audio.map(
+    val_audio = val_audio.map(
         lambda audio, label: ((audio - audio_mean) / audio_std, label),
         num_parallel_calls=tf.data.AUTOTUNE,
     )
@@ -179,21 +179,21 @@ def main():
     ).shuffle(10000, reshuffle_each_iteration=False)
 
     write_tfrecords(train_audio, os.path.join(OUT_AUDIO_DIR, "train"))
-    write_tfrecords(validate_audio, os.path.join(OUT_AUDIO_DIR, "validate"))
+    write_tfrecords(val_audio, os.path.join(OUT_AUDIO_DIR, "val"))
     write_tfrecords(test_audio, os.path.join(OUT_AUDIO_DIR, "test"))
 
     # -------- SPECTROGRAM TFRECORDS (CNN) --------
     train_spec = _apply_stft(train_audio, FRAME_LENGTH, FRAME_STEP, SAMPLE_RATE, MAX_FREQUENCY)
-    validate_spec = _apply_stft(validate_audio, FRAME_LENGTH, FRAME_STEP, SAMPLE_RATE, MAX_FREQUENCY)
+    val_spec = _apply_stft(val_audio, FRAME_LENGTH, FRAME_STEP, SAMPLE_RATE, MAX_FREQUENCY)
     test_spec = _apply_stft(test_audio, FRAME_LENGTH, FRAME_STEP, SAMPLE_RATE, MAX_FREQUENCY)
 
-    spec_mean, spec_std = _compute_spec_stats([train_spec, validate_spec])
+    spec_mean, spec_std = _compute_spec_stats([train_spec, val_spec])
 
     train_spec = train_spec.map(
         lambda spec, label: ((spec - spec_mean) / spec_std, label),
         num_parallel_calls=tf.data.AUTOTUNE,
     )
-    validate_spec = validate_spec.map(
+    val_spec = val_spec.map(
         lambda spec, label: ((spec - spec_mean) / spec_std, label),
         num_parallel_calls=tf.data.AUTOTUNE,
     )
@@ -203,11 +203,11 @@ def main():
     )
 
     write_tfrecords(train_spec, os.path.join(OUT_SPEC_DIR, "train"))
-    write_tfrecords(validate_spec, os.path.join(OUT_SPEC_DIR, "validate"))
+    write_tfrecords(val_spec, os.path.join(OUT_SPEC_DIR, "val"))
     write_tfrecords(test_spec, os.path.join(OUT_SPEC_DIR, "test"))
 
     print(f"Split CSV: {SPLITS_CSV}")
-    print(f"Counts: train={len(train_entries)}, validate={len(validate_entries)}, test={len(test_entries)}")
+    print(f"Counts: train={len(train_entries)}, val={len(val_entries)}, test={len(test_entries)}")
     print(f"Skipped missing clips: {skipped_missing}")
     print(f"Audio TFRecords written to: {OUT_AUDIO_DIR}")
     print(f"Audio normalization stats: mean={audio_mean:.6f}, std={audio_std:.6f}")
