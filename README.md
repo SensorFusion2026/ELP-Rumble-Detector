@@ -165,7 +165,7 @@ After the build job completes, confirm Python version, TensorFlow, and GPU visib
 
 ```bash
 singularity exec --nv /expanse/lustre/projects/cso100/$USER/elp_container/sandbox/ \
-  python -c "
+python -c "
 import sys, tensorflow as tf
 print('Python', sys.version)
 print('TensorFlow', tf.__version__)
