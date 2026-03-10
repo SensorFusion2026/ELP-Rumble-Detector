@@ -130,7 +130,7 @@ def main():
 
     if not SPLITS_CSV.exists():
         raise FileNotFoundError(
-            f"Missing split CSV: {SPLITS_CSV}. Run create_clips_plan.py, cut_wav_clips.py, and create_splits.py first."
+            f"Missing split CSV: {SPLITS_CSV}. Run create_data_plan.py and cut_wav_clips.py first."
         )
 
     df = pd.read_csv(SPLITS_CSV)
@@ -158,9 +158,7 @@ def main():
     val_audio = _dataset_from_entries(val_entries)
     test_audio = _dataset_from_entries(test_entries)
 
-    audio_stats_dataset = train_audio.map(lambda x, _: x).concatenate(
-        val_audio.map(lambda x, _: x)
-    )
+    audio_stats_dataset = train_audio.map(lambda x, _: x)
     audio_mean, audio_std = compute_statistics(audio_stats_dataset)
 
     train_audio = train_audio.map(
@@ -179,7 +177,7 @@ def main():
     ).shuffle(10000, reshuffle_each_iteration=False)
 
     write_tfrecords(train_audio, os.path.join(OUT_AUDIO_DIR, "train"))
-    write_tfrecords(val_audio, os.path.join(OUT_AUDIO_DIR, "val"))
+    write_tfrecords(val_audio, os.path.join(OUT_AUDIO_DIR, "validate"))
     write_tfrecords(test_audio, os.path.join(OUT_AUDIO_DIR, "test"))
 
     # -------- SPECTROGRAM TFRECORDS (CNN) --------
@@ -187,7 +185,7 @@ def main():
     val_spec = _apply_stft(val_audio, FRAME_LENGTH, FRAME_STEP, SAMPLE_RATE, MAX_FREQUENCY)
     test_spec = _apply_stft(test_audio, FRAME_LENGTH, FRAME_STEP, SAMPLE_RATE, MAX_FREQUENCY)
 
-    spec_mean, spec_std = _compute_spec_stats([train_spec, val_spec])
+    spec_mean, spec_std = _compute_spec_stats([train_spec])
 
     train_spec = train_spec.map(
         lambda spec, label: ((spec - spec_mean) / spec_std, label),
@@ -203,7 +201,7 @@ def main():
     )
 
     write_tfrecords(train_spec, os.path.join(OUT_SPEC_DIR, "train"))
-    write_tfrecords(val_spec, os.path.join(OUT_SPEC_DIR, "val"))
+    write_tfrecords(val_spec, os.path.join(OUT_SPEC_DIR, "validate"))
     write_tfrecords(test_spec, os.path.join(OUT_SPEC_DIR, "test"))
 
     print(f"Split CSV: {SPLITS_CSV}")

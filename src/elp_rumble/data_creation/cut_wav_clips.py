@@ -27,7 +27,7 @@ def main():
     if RAW_ROOT is None:
         raise ValueError("RAW_ROOT is not configured. Set ENVIRONMENT=local and CORNELL_DATA_ROOT.")
     if not CLIPS_PLAN_CSV.exists():
-        raise FileNotFoundError(f"Missing plan file: {CLIPS_PLAN_CSV}. Run create_clips_plan.py first.")
+        raise FileNotFoundError(f"Missing plan file: {CLIPS_PLAN_CSV}. Run create_data_plan.py first.")
 
     plan = pd.read_csv(CLIPS_PLAN_CSV)
     required = {"source_wav_relpath", "start_s", "duration_s", "clip_wav_relpath"}
@@ -73,7 +73,7 @@ def main():
                     skipped_short += 1
                     continue
 
-            frames = w.readframes(n_frames)
+                frames = w.readframes(n_frames)
         except wave.Error:
             skipped_bad_format += 1
             continue

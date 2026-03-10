@@ -37,36 +37,27 @@ if ENVIRONMENT == "local":
 
     RAW_ROOT = Path(CORNELL_DATA_ROOT)
 
-    # -------------------- Positive raw data --------------------
-    # Train / validation (PNNN)
-    POS_TRAIN_VAL1_METADATA_DIR = RAW_ROOT / "Rumble" / "Training" / "pnnn"
-    POS_TRAIN_VAL1_SOUNDS_DIR = RAW_ROOT / "Rumble" / "Training" / "Sounds"
-    POS_TRAIN_VAL2_METADATA_DIR = RAW_ROOT / "Rumble" / "Testing" / "PNNN"
-    POS_TRAIN_VAL2_SOUNDS_DIR = RAW_ROOT / "Rumble" / "Testing" / "PNNN" / "Sounds"
+    # ------------------------- PNNN -------------------------
+    PNNN1_METADATA = RAW_ROOT / "Rumble" / "Training" / "pnnn"
+    PNNN1_SOUNDS = RAW_ROOT / "Rumble" / "Training" / "Sounds"
+    PNNN2_METADATA = RAW_ROOT / "Rumble" / "Testing" / "PNNN"
+    PNNN2_SOUNDS = RAW_ROOT / "Rumble" / "Testing" / "PNNN" / "Sounds"
 
-    # Holdout testing (Dzanga) — also used for holdout-test negative planning
-    # via buffered exclusion around positive rumble annotations.
-    POS_HOLDOUT_TEST_METADATA_DIR = RAW_ROOT / "Rumble" / "Testing" / "Dzanga"
-    POS_HOLDOUT_TEST_SOUNDS_DIR = RAW_ROOT / "Rumble" / "Testing" / "Dzanga" / "Sounds"
-
-    # -------------------- Negative raw data --------------------
-    # Train/val negatives: 24hr PNNN WAVs with long stretches of non-gunshot
-    # background noise, repurposed as rumble-detector negatives.
-    NEG_SOURCE_INPUT_DIR = RAW_ROOT / "Gunshot" / "Testing" / "PNNN" / "Sounds"
+    # ------------------------ Dzanga ------------------------
+    DZANGA_METADATA = RAW_ROOT / "Rumble" / "Testing" / "Dzanga"
+    DZANGA_SOUNDS = RAW_ROOT / "Rumble" / "Testing" / "Dzanga" / "Sounds"
 
 else:
     RAW_ROOT = None
 
-    POS_TRAIN_VAL1_METADATA_DIR = None
-    POS_TRAIN_VAL1_SOUNDS_DIR = None
+    PNNN1_METADATA = None
+    PNNN1_SOUNDS = None
 
-    POS_TRAIN_VAL2_METADATA_DIR = None
-    POS_TRAIN_VAL2_SOUNDS_DIR = None
+    PNNN2_METADATA = None
+    PNNN2_SOUNDS = None
 
-    POS_HOLDOUT_TEST_METADATA_DIR = None
-    POS_HOLDOUT_TEST_SOUNDS_DIR = None
-
-    NEG_SOURCE_INPUT_DIR = None
+    DZANGA_METADATA = None
+    DZANGA_SOUNDS = None
 
 # ---------------------------------------------------------------------
 # Repository-managed data directories

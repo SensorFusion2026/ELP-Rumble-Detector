@@ -328,30 +328,33 @@ nano .env
 
 # Data creation
 
-⚠️ **IMPORTANT:** Steps **1** and **3** create shared, version-controlled artifacts.  
-⚠️ **Do NOT run them unless the team agrees to change the dataset.**  
-⚠️ **In normal use, you should ONLY run steps 2 and 4.**
+⚠️ **IMPORTANT:** Step **1** creates shared, version-controlled artifacts (clip plan + split CSVs).  
+⚠️ **Do NOT run it unless the team agrees to change the dataset.**  
+⚠️ **In normal use, you should ONLY run steps 2 and 3.**
 
-1) **Clip plan (source of truth; committed - ⚠️ DO NOT rerun casually)**
-- Run: `python -m elp_rumble.data_creation.create_clips_plan`
-- Output: `src/elp_rumble/data_creation/clips_plan.csv`
+## Pipeline overview
+
+```
+create_data_plan.py  ──►  clips_plan.csv + splits/model{1,2,3}.csv  (committed)
+cut_wav_clips.py     ──►  data/wav_clips/{pos,neg}/...               (local)
+create_tfrecords.py  ──►  data/tfrecords/...                         (local)
+```
+
+## Steps
+
+1) **Data plan (source of truth; committed - ⚠️ DO NOT rerun casually)**
+- Run: `python -m elp_rumble.data_creation.create_data_plan`
+- Outputs (all version-controlled):
+  - `src/elp_rumble/data_creation/clips_plan.csv` — union of all clips to cut
+  - `src/elp_rumble/data_creation/splits/model1.csv` — feasibility split
+  - `src/elp_rumble/data_creation/splits/model2.csv` — scaled split
+  - `src/elp_rumble/data_creation/splits/model3.csv` — full performance split
 
 2) **Cut clips (derived; safe to run)**
 - Run: `python -m elp_rumble.data_creation.cut_wav_clips`
 - Output: `data/wav_clips/{pos,neg}/...`
 
-3) **Splits (committed - ⚠️ DO NOT rerun casually)**
-- Run: `python -m elp_rumble.data_creation.create_splits`
-- Output: `src/elp_rumble/data_creation/splits/{model1,model2,model3}.csv`
-
-Rumble split policy enforced by `create_splits.py`:
-- Dzanga clips (holdout) are assigned to `test`; PNNN clips are split into `train/val` by source WAV using `TRAIN_FRAC` (default `0.8`).
-- Holdout-test negatives are sourced from Dzanga WAVs via buffered exclusion (`BUFFER_S=10s`) around positive rumble annotations (`location=dzanga`). Train/val negatives come from PNNN background WAVs (`location=pnnn`).
-- `model1`: feasibility split with split+label caps (30 pos + 60 neg train_val, 30 pos + 30 neg holdout_test).
-- `model2`: 50% WAV-level subsample (`MODEL2_FRAC=0.5`).
-- `model3`: full production split (`MODEL3_FRAC=1.0`).
-
-4) **TFRecords (derived; safe to run)**
+3) **TFRecords (derived; safe to run)**
 
 - Run (default: `MODEL=model3`):  
   `python -m elp_rumble.data_creation.create_tfrecords`
@@ -365,12 +368,25 @@ Rumble split policy enforced by `create_splits.py`:
   `MODEL=model3 python -m elp_rumble.data_creation.create_tfrecords`
 
 - Output (single run writes both RNN and CNN artifacts):  
-  `data/tfrecords/tfrecords_audio/model1/{train,val,test}.tfrecord` (model1)  
-  `data/tfrecords/tfrecords_audio/model2/{train,val,test}.tfrecord` (model2)  
-  `data/tfrecords/tfrecords_audio/model3/{train,val,test}.tfrecord` (model3)  
-  `data/tfrecords/tfrecords_spectrogram/model1/{train,val,test}.tfrecord` (model1)  
-  `data/tfrecords/tfrecords_spectrogram/model2/{train,val,test}.tfrecord` (model2)  
-  `data/tfrecords/tfrecords_spectrogram/model3/{train,val,test}.tfrecord` (model3)  
+  `data/tfrecords/tfrecords_audio/{model}/{train,val,test}.tfrecord`  
+  `data/tfrecords/tfrecords_spectrogram/{model}/{train,val,test}.tfrecord`
+
+## Data plan policy
+
+`create_data_plan.py` performs clip planning, split assignment, and model derivation in a single run:
+
+**Sources:** All clips (positive and negative) come from Rumble PNNN and Dzanga folders only. Three locations: `pnnn1`, `pnnn2`, `dzanga`.
+
+**Negative generation:** Buffered exclusion — annotation spans ± 5 s buffer zones are forbidden; all remaining clip-length windows become candidates. No per-WAV cap; candidates are trimmed per-split after splitting.
+
+**Split assignment:** WAV-level grouping prevents recording-condition leakage. Dzanga WAVs (multi-day recordings) use 8-hour temporal segmentation for finer-grained assignment. Greedy Longest Processing Time (LPT) algorithm targets 80/10/10 train/val/test by positive count, with location seeding to guarantee all locations appear in all splits.
+
+**Neg:pos ratio:** Exactly 3:1 in every split, enforced by per-split trimming after assignment.
+
+**Model hierarchy (model1 ⊂ model2 ⊂ model3):**
+- `model3`: full dataset (all positives + 3:1 trimmed negatives)
+- `model2`: 50% stratified downsample of model3 (per split × label)
+- `model1`: feasibility subset with caps (50 pos + 150 neg), distributed proportionally across splits
 
 ---
 
