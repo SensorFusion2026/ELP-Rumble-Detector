@@ -2,12 +2,10 @@
 # Usage:
 #   python -m elp_rumble.data_creation.create_tfrecords
 #
-# Optional environment variables:
-#   MODEL=model1|model2|model3      (default: model3)
-#
 # This script writes BOTH:
 # 1) normalized audio TFRecords (for RNN)
 # 2) normalized spectrogram TFRecords (for CNN)
+# for all split definitions: model1, model2, and model3.
 
 import os
 import random
@@ -22,16 +20,7 @@ from elp_rumble.config.paths import (
     SPLITS_DIR,
     WAV_CLIPS_ROOT,
 )
-
-MODEL = os.getenv("MODEL", "model3").strip()
-if MODEL not in {"model1", "model2", "model3"}:
-    raise ValueError("Invalid MODEL. Use MODEL=model1, MODEL=model2, or MODEL=model3.")
-
-SPLITS_CSV = SPLITS_DIR / f"{MODEL}.csv"
-OUT_AUDIO_DIR = TFRECORDS_AUDIO_DIR / MODEL
-OUT_SPEC_DIR = TFRECORDS_SPECTROGRAM_DIR / MODEL
-OUT_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
-OUT_SPEC_DIR.mkdir(parents=True, exist_ok=True)
+MODELS = ("model1", "model2", "model3")
 
 LABEL_MAP = {"neg": 0, "pos": 1}
 SEED = 42
@@ -128,16 +117,27 @@ def main():
     tf.config.set_visible_devices([], "GPU")
     print(tf.config.list_physical_devices())
 
-    if not SPLITS_CSV.exists():
+    for model in MODELS:
+        _create_tfrecords_for_model(model)
+
+
+def _create_tfrecords_for_model(model):
+    splits_csv = SPLITS_DIR / f"{model}.csv"
+    out_audio_dir = TFRECORDS_AUDIO_DIR / model
+    out_spec_dir = TFRECORDS_SPECTROGRAM_DIR / model
+    out_audio_dir.mkdir(parents=True, exist_ok=True)
+    out_spec_dir.mkdir(parents=True, exist_ok=True)
+
+    if not splits_csv.exists():
         raise FileNotFoundError(
-            f"Missing split CSV: {SPLITS_CSV}. Run create_data_plan.py and cut_wav_clips.py first."
+            f"Missing split CSV: {splits_csv}. Run create_data_plan.py and cut_wav_clips.py first."
         )
 
-    df = pd.read_csv(SPLITS_CSV)
+    df = pd.read_csv(splits_csv)
     required = {"split", "label", "location", "clip_wav_relpath"}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f"{SPLITS_CSV} missing columns: {sorted(missing)}")
+        raise ValueError(f"{splits_csv} missing columns: {sorted(missing)}")
 
     entries, skipped_missing = _build_entries(df)
     if not entries:
@@ -176,9 +176,9 @@ def main():
         num_parallel_calls=tf.data.AUTOTUNE,
     ).shuffle(10000, reshuffle_each_iteration=False)
 
-    write_tfrecords(train_audio, os.path.join(OUT_AUDIO_DIR, "train"))
-    write_tfrecords(val_audio, os.path.join(OUT_AUDIO_DIR, "validate"))
-    write_tfrecords(test_audio, os.path.join(OUT_AUDIO_DIR, "test"))
+    write_tfrecords(train_audio, os.path.join(out_audio_dir, "train"))
+    write_tfrecords(val_audio, os.path.join(out_audio_dir, "validate"))
+    write_tfrecords(test_audio, os.path.join(out_audio_dir, "test"))
 
     # -------- SPECTROGRAM TFRECORDS (CNN) --------
     train_spec = _apply_stft(train_audio, FRAME_LENGTH, FRAME_STEP, SAMPLE_RATE, MAX_FREQUENCY)
@@ -200,17 +200,19 @@ def main():
         num_parallel_calls=tf.data.AUTOTUNE,
     )
 
-    write_tfrecords(train_spec, os.path.join(OUT_SPEC_DIR, "train"))
-    write_tfrecords(val_spec, os.path.join(OUT_SPEC_DIR, "validate"))
-    write_tfrecords(test_spec, os.path.join(OUT_SPEC_DIR, "test"))
+    write_tfrecords(train_spec, os.path.join(out_spec_dir, "train"))
+    write_tfrecords(val_spec, os.path.join(out_spec_dir, "validate"))
+    write_tfrecords(test_spec, os.path.join(out_spec_dir, "test"))
 
-    print(f"Split CSV: {SPLITS_CSV}")
+    print(f"Model: {model}")
+    print(f"Split CSV: {splits_csv}")
     print(f"Counts: train={len(train_entries)}, val={len(val_entries)}, test={len(test_entries)}")
     print(f"Skipped missing clips: {skipped_missing}")
-    print(f"Audio TFRecords written to: {OUT_AUDIO_DIR}")
+    print(f"Audio TFRecords written to: {out_audio_dir}")
     print(f"Audio normalization stats: mean={audio_mean:.6f}, std={audio_std:.6f}")
-    print(f"Spectrogram TFRecords written to: {OUT_SPEC_DIR}")
+    print(f"Spectrogram TFRecords written to: {out_spec_dir}")
     print(f"Spectrogram normalization stats: mean={spec_mean:.6f}, std={spec_std:.6f}")
+    print("-")
 
 
 if __name__ == "__main__":
