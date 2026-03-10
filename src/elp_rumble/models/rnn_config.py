@@ -10,7 +10,8 @@ class RNNConfig(object):
         self.config = config
         
         # Data related paths
-        self.DATASET_FOLDER = TFRECORDS_AUDIO_DIR
+        self.MODEL = os.getenv("MODEL", "model3")
+        self.DATASET_FOLDER = TFRECORDS_AUDIO_DIR / self.MODEL
         self.TRAIN_FILE = 'train.tfrecord'
         self.VALIDATE_FILE = 'validate.tfrecord'
         self.TEST_FILE = 'test.tfrecord'

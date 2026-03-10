@@ -35,7 +35,8 @@ def make_ds(tfrecord_path, batch_size, shuffle=False, downsample_fraction=1, see
     return ds
 
 def get_spec_paths():
-    base = TFRECORDS_SPECTROGRAM_DIR
+    model = os.getenv("MODEL", "model3").strip()
+    base = os.path.join(TFRECORDS_SPECTROGRAM_DIR, model)
     return {
         "train": os.path.join(base, "train.tfrecord"),
         "val":   os.path.join(base, "validate.tfrecord"),

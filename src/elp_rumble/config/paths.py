@@ -2,11 +2,11 @@
 paths.py
 
 Centralized path configuration for the ELP Rumble Detector.
-Adapted from legacy data_creation/data_path_config.py, but using the gunshot-style pattern:
-- module-level Path constants (no class)
-- loads .env
-- defines PROJECT_ROOT via parents[3]
-- defines RAW_ROOT from CORNELL_DATA_ROOT for local
+
+Current path policy:
+- Versioned manifests live in `src/elp_rumble/data_creation/`.
+- Generated artifacts (wav clips and TFRecords) live under `data/`.
+- Raw Cornell source paths are resolved only when `ENVIRONMENT=local`.
 """
 
 from __future__ import annotations
@@ -37,62 +37,46 @@ if ENVIRONMENT == "local":
 
     RAW_ROOT = Path(CORNELL_DATA_ROOT)
 
-    # -------------------- Positive raw data --------------------
-    # Positive Raw Data Paths - Train
-    POS_TRAIN_VAL1_METADATA_DIR = RAW_ROOT / "Rumble" / "Training" / "pnnn"
-    POS_TRAIN_VAL1_SOUNDS_DIR = RAW_ROOT / "Rumble" / "Training" / "Sounds"
-    POS_TRAIN_VAL2_METADATA_DIR = RAW_ROOT / "Rumble" / "Testing" / "PNNN"
-    POS_TRAIN_VAL2_SOUNDS_DIR = RAW_ROOT / "Rumble" / "Testing" / "PNNN" / "Sounds"
+    # ------------------------- PNNN -------------------------
+    PNNN1_METADATA = RAW_ROOT / "Rumble" / "Training" / "pnnn"
+    PNNN1_SOUNDS = RAW_ROOT / "Rumble" / "Training" / "Sounds"
+    PNNN2_METADATA = RAW_ROOT / "Rumble" / "Testing" / "PNNN"
+    PNNN2_SOUNDS = RAW_ROOT / "Rumble" / "Testing" / "PNNN" / "Sounds"
 
-    # Holdout testing (Dzanga)
-    POS_HOLDOUT_TEST_METADATA_DIR = RAW_ROOT / "Rumble" / "Testing" / "Dzanga"
-    POS_HOLDOUT_TEST_SOUNDS_DIR = RAW_ROOT / "Rumble" / "Testing" / "Dzanga" / "Sounds"
-
-    # -------------------- Negative raw data --------------------
-    # NOTE: This is 24hr .wavs containing gunshot sounds with long stretches of 
-    #       non-gunshot background noise in-between, to be used as negatives for 
-    #       rumble detector.
-    NEG_SOURCE_INPUT_DIR = RAW_ROOT / "Gunshot" / "Testing" / "PNNN" / "Sounds"
+    # ------------------------ Dzanga ------------------------
+    DZANGA_METADATA = RAW_ROOT / "Rumble" / "Testing" / "Dzanga"
+    DZANGA_SOUNDS = RAW_ROOT / "Rumble" / "Testing" / "Dzanga" / "Sounds"
 
 else:
     RAW_ROOT = None
 
-    POS_TRAIN_VAL1_METADATA_DIR = None
-    POS_TRAIN_VAL1_SOUNDS_DIR = None
+    PNNN1_METADATA = None
+    PNNN1_SOUNDS = None
 
-    POS_TRAIN_VAL2_METADATA_DIR = None
-    POS_TRAIN_VAL2_SOUNDS_DIR = None
+    PNNN2_METADATA = None
+    PNNN2_SOUNDS = None
 
-    POS_HOLDOUT_TEST_METADATA_DIR = None
-    POS_HOLDOUT_TEST_SOUNDS_DIR = None
-
-    NEG_SOURCE_INPUT_DIR = None
+    DZANGA_METADATA = None
+    DZANGA_SOUNDS = None
 
 # ---------------------------------------------------------------------
-# Derived project data directories (repo-managed)
+# Repository-managed data directories
 # ---------------------------------------------------------------------
 
+# Versioned manifests for reproducible data creation
+DATA_CREATION_ROOT = PROJECT_ROOT / "src" / "elp_rumble" / "data_creation"
+CLIPS_PLAN_CSV = DATA_CREATION_ROOT / "clips_plan.csv"
+SPLITS_DIR = DATA_CREATION_ROOT / "splits"
+
+# Generated artifacts (not versioned)
 DATA_ROOT = PROJECT_ROOT / "data"
 
-# ------------- Preprocessed Clips Paths -------------
-CLIPS_TRAIN_VAL_ROOT = DATA_ROOT / "clips_train_val"
-CLIPS_HOLDOUT_TEST_ROOT = DATA_ROOT / "clips_holdout_test"
+# Generated wav clips
+WAV_CLIPS_ROOT = DATA_ROOT / "wav_clips"
 
-# Positive preprocessed clips
-POS_TRAIN_VAL_CLIPS_DIR = CLIPS_TRAIN_VAL_ROOT / "pos_pnnn_clips"
-POS_HOLDOUT_TEST_CLIPS_DIR = CLIPS_HOLDOUT_TEST_ROOT / "pos_dzanga_clips"
-
-# Negative preprocessed clips
-TRAIN_VAL_NEG_CLIPS_DIR = CLIPS_TRAIN_VAL_ROOT / "neg_pnnn_gunshot_clips"
-HOLDOUT_TEST_NEG_CLIPS_DIR = CLIPS_HOLDOUT_TEST_ROOT / "neg_pnnn_gunshot_clips"
-
-# ------------- TFRecords Paths -------------
+# Generated TFRecords
 TFRECORDS_ROOT = DATA_ROOT / "tfrecords"
-
-# TFRecords audio
 TFRECORDS_AUDIO_DIR = TFRECORDS_ROOT / "tfrecords_audio"
-
-# TFRecords spectrogram
 TFRECORDS_SPECTROGRAM_DIR = TFRECORDS_ROOT / "tfrecords_spectrogram"
 
 
@@ -102,17 +86,13 @@ TFRECORDS_SPECTROGRAM_DIR = TFRECORDS_ROOT / "tfrecords_spectrogram"
 
 def ensure_directories() -> None:
     """
-    Create all repo-managed directories if they do not exist.
+    Create required repo-managed directories if they do not exist.
     Safe to call at the beginning of preprocessing/training scripts.
     """
     for p in [
         DATA_ROOT,
-        CLIPS_TRAIN_VAL_ROOT,
-        CLIPS_HOLDOUT_TEST_ROOT,
-        POS_TRAIN_VAL_CLIPS_DIR,
-        POS_HOLDOUT_TEST_CLIPS_DIR,
-        TRAIN_VAL_NEG_CLIPS_DIR,
-        HOLDOUT_TEST_NEG_CLIPS_DIR,
+        WAV_CLIPS_ROOT,
+        SPLITS_DIR,
         TFRECORDS_ROOT,
         TFRECORDS_AUDIO_DIR,
         TFRECORDS_SPECTROGRAM_DIR,

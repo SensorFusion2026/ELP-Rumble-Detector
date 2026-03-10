@@ -318,7 +318,7 @@ cp .env.example .env
 Edit the .env file with your local data path:
 Open the .env file in a text editor and change the path to point
 to where you stored the ELP Cornell Data folder. For example:
-CORNELL_DATA_ROOT="/Users/rileydenn/ELP_Cornell_Data"
+CORNELL_DATA_ROOT="/Users/username/ELP_Cornell_Data"
 You can either use nano or the editor of your choosing.
 ```bash
 nano .env
@@ -326,32 +326,67 @@ nano .env
 
 ---
 
-## Data Preprocessing (Suggested to do on your local machine)
-The `elp_rumble.data_creation` package contains all of the necessary scripts to convert the Elephant data from raw 24-hour audio clips, to audio clippings of 5 seconds, to tfrecords of audio with appropriate labels, and finally to the tfrecords of spectrograms. These scripts are only helpful if you have access to the ELP data provided by Cornell.
+# Data creation
 
-Ensure you are in the correct location and your local venv is activated:
-```bash
-cd /path/to/your/ElephantListeningProject
-source elp-venv/bin/activate
-cd ELP-CNNvsRNN-v2
+⚠️ **IMPORTANT:** Step **1** creates shared, version-controlled artifacts (clip plan + split CSVs).  
+⚠️ **Do NOT run it unless the team agrees to change the dataset.**  
+⚠️ **In normal use, you should ONLY run steps 2 and 3.**
+
+## Pipeline overview
+
+```
+create_data_plan.py  ──►  clips_plan.csv + splits/model{1,2,3}.csv  (committed)
+cut_wav_clips.py     ──►  data/wav_clips/{pos,neg}/...               (local)
+create_tfrecords.py  ──►  data/tfrecords/...                         (local)
 ```
 
-Cut audio clippings:
-```bash
-python3 -m elp_rumble.data_creation.pos_audio_clips --mode train
-python3 -m elp_rumble.data_creation.pos_audio_clips --mode test
-python3 -m elp_rumble.data_creation.neg_audio_clips
-```
+## Steps
 
-Convert clips into tfrecords, then convert audio tfrecords into spectrograms:
-```bash
-python3 -m elp_rumble.data_creation.create_tfrecords
-python3 -m elp_rumble.data_creation.convert_audio_to_spec_tfrecords
-```
+1) **Data plan (source of truth; committed - ⚠️ DO NOT rerun casually)**
+- Run: `python -m elp_rumble.data_creation.create_data_plan`
+- Outputs (all version-controlled):
+  - `src/elp_rumble/data_creation/clips_plan.csv` — union of all clips to cut
+  - `src/elp_rumble/data_creation/splits/model1.csv` — feasibility split
+  - `src/elp_rumble/data_creation/splits/model2.csv` — scaled split
+  - `src/elp_rumble/data_creation/splits/model3.csv` — full performance split
 
-Once TFRecords are created, no manual path edits are required for CNN. CNN data paths come from `src/elp_rumble/input_pipeline/spectrogram_tfrecords.py` and `src/elp_rumble/config/paths.py`.
+2) **Cut clips (derived; safe to run)**
+- Run: `python -m elp_rumble.data_creation.cut_wav_clips`
+- Output: `data/wav_clips/{pos,neg}/...`
 
-For RNN-only workflows, dataset file names are defined in `src/elp_rumble/models/rnn_config.py`
+3) **TFRecords (derived; safe to run)**
+
+- Run (default: `MODEL=model3`):  
+  `python -m elp_rumble.data_creation.create_tfrecords`
+
+- Optional environment variables:  
+  - MODEL: `model1`|`model2`|`model3` (default: model3)
+
+- Examples:  
+  `MODEL=model1 python -m elp_rumble.data_creation.create_tfrecords`  
+  `MODEL=model2 python -m elp_rumble.data_creation.create_tfrecords`  
+  `MODEL=model3 python -m elp_rumble.data_creation.create_tfrecords`
+
+- Output (single run writes both RNN and CNN artifacts):  
+  `data/tfrecords/tfrecords_audio/{model}/{train,val,test}.tfrecord`  
+  `data/tfrecords/tfrecords_spectrogram/{model}/{train,val,test}.tfrecord`
+
+## Data plan policy
+
+`create_data_plan.py` performs clip planning, split assignment, and model derivation in a single run:
+
+**Sources:** All clips (positive and negative) come from Rumble PNNN and Dzanga folders only. Three locations: `pnnn1`, `pnnn2`, `dzanga`.
+
+**Negative generation:** Buffered exclusion — annotation spans ± 5 s buffer zones are forbidden; all remaining clip-length windows become candidates. No per-WAV cap; candidates are trimmed per-split after splitting.
+
+**Split assignment:** WAV-level grouping prevents recording-condition leakage. Dzanga WAVs (multi-day recordings) use 8-hour temporal segmentation for finer-grained assignment. Greedy Longest Processing Time (LPT) algorithm targets 80/10/10 train/val/test by positive count, with location seeding to guarantee all locations appear in all splits.
+
+**Neg:pos ratio:** Exactly 3:1 in every split, enforced by per-split trimming after assignment.
+
+**Model hierarchy (model1 ⊂ model2 ⊂ model3):**
+- `model3`: full dataset (all positives + 3:1 trimmed negatives)
+- `model2`: 50% stratified downsample of model3 (per split × label)
+- `model1`: feasibility subset with caps (50 pos + 150 neg), distributed proportionally across splits
 
 ---
 
@@ -364,7 +399,6 @@ rsync -avh --progress \
 your_username@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN-v2/data
 
 rsync -avh --progress \
-"/path/to/local/project/repo/ELP-CNNvsRNN-v2/data/tfrecords_audio" \
 "/path/to/local/project/repo/ELP-CNNvsRNN-v2/data/tfrecords_spectrogram" \
 your_username@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-CNNvsRNN-v2/data/
 ```
