@@ -1,6 +1,0 @@
-python-dotenv
-numpy
-pandas
-scipy
-scikit-learn
-tensorflow
