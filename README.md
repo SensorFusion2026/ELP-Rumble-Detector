@@ -78,13 +78,12 @@ create_tfrecords.py  ──►  data/tfrecords/...                         (loca
    python -m elp_rumble.data_creation.cut_wav_clips
    ```
 
-3. **TFRecords** (safe to run; default `MODEL=model3`)
+3. **TFRecords** (safe to run)
    ```bash
    python -m elp_rumble.data_creation.create_tfrecords
-   # Or specify a model:
-   MODEL=model1 python -m elp_rumble.data_creation.create_tfrecords
    ```
-   Output: `data/tfrecords/tfrecords_audio/{model}/` and `data/tfrecords/tfrecords_spectrogram/{model}/`
+  Output in one run for all three models (`model1`, `model2`, `model3`):
+  `data/tfrecords/tfrecords_audio/{model}/` and `data/tfrecords/tfrecords_spectrogram/{model}/`
 
 ### Data plan policy (summary)
 
