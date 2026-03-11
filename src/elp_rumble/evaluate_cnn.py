@@ -63,9 +63,19 @@ def plot_training_curves(history_df: pd.DataFrame, output_dir: Path) -> None:
 
 
 def plot_confusion_matrix(cm: dict, output_dir: Path) -> None:
+    required_keys = {"tp", "tn", "fp", "fn"}
+    missing = required_keys - cm.keys()
+    if missing:
+        print(f"  Skipping confusion matrix: missing keys {missing}")
+        return
+
     tp, tn, fp, fn = cm["tp"], cm["tn"], cm["fp"], cm["fn"]
     matrix = np.array([[tn, fp], [fn, tp]])
     total = matrix.sum()
+
+    if total == 0:
+        print("  Skipping confusion matrix: all counts are 0")
+        return
 
     fig, ax = plt.subplots(figsize=(5, 4))
     im = ax.imshow(matrix, interpolation="nearest", cmap="Blues")
