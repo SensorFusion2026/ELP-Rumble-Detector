@@ -41,6 +41,13 @@ class RNN(tf.keras.Model):
 
         self._set_activation_function(activation)
 
+        if sequence_length % chunk_size != 0:
+            raise ValueError(
+                f"sequence_length ({sequence_length}) must be exactly divisible by "
+                f"chunk_size ({chunk_size}), but {sequence_length} % {chunk_size} = "
+                f"{sequence_length % chunk_size}."
+            )
+
         self.sequence_length = sequence_length
         self.chunk_size = chunk_size
         self.num_chunks = sequence_length // chunk_size
