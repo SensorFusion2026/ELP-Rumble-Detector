@@ -2,7 +2,7 @@
 
 A CNN-based detector for African forest elephant rumble vocalizations, built for the [Elephant Listening Project](https://elephantlisteningproject.org/) at Cornell. Audio clips are converted to spectrograms and classified as rumble / non-rumble. Training runs locally or on the SDSC Expanse ACCESS GPU supercomputer.
 
-> **Python baseline:** This repo targets **Python 3.11.9**, the version proven on Expanse for rumble model training. Dependencies are managed exclusively through `pyproject.toml` — there is no `requirements.txt`.
+> **Python baseline:** This repo targets **Python 3.10**, the version proven on Expanse for rumble model training. Dependencies are managed exclusively through `pyproject.toml` — there is no `requirements.txt`.
 
 ---
 
@@ -15,11 +15,11 @@ A CNN-based detector for African forest elephant rumble vocalizations, built for
 - [pyenv](https://github.com/pyenv/pyenv) for managing Python versions
 - Access to the Cornell ELP data
 
-### Install Python 3.11.9
+### Install Python 3.10 (local dev)
 
 ```bash
 brew install pyenv
-pyenv install 3.11.9
+pyenv install 3.10.13
 ```
 
 ### Clone and configure
@@ -33,7 +33,7 @@ cd ELP-Rumble-Detector
 ### Create the virtual environment and install
 
 ```bash
-~/.pyenv/versions/3.11.9/bin/python -m venv .venv
+~/.pyenv/versions/3.10.13/bin/python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
@@ -99,103 +99,62 @@ create_tfrecords.py  ──►  data/tfrecords/...                         (loca
 ### Prerequisites
 
 - Expanse project storage access (e.g. `/expanse/lustre/projects/cso100/`)
-- Processed data tfrecords
+- Processed data tfrecords uploaded to the project tree
 
-### Initial setup on Expanse
+### Project layout on Expanse
 
-Log in to Expanse via the [portal](https://portal.expanse.sdsc.edu/) or SSH, then clone the repo to project storage:
+Clone the repo under the shared project root so it co-resides with other Elephant Listening Project material:
 
-```bash
-mkdir -p /expanse/lustre/projects/cso100/$USER/elp_container
-cd /expanse/lustre/projects/cso100/$USER/elp_container
-git clone <repo https url>
+```
+/expanse/lustre/projects/cso100/<your_username>/ElephantListeningProject/
+   └── ELP-Rumble-Detector/
 ```
 
-### Build the Singularity container (SLURM job — recommended)
+### Upload processed data tfrecords
 
-Create `build_and_setup_container.slurm` in the `elp_container` directory:
+Use [Globus Connect Personal](https://docs.globus.org/globus-connect-personal/) with your SDSC Expanse credentials to transfer files between your local machine and the remote server. [Tutorial](https://docs.globus.org/guides/tutorials/manage-files/transfer-files/). Note: In the [Globus file manager tab](https://app.globus.org/file-manager), search for the collection `SDSC HPC - Expanse Lustre`, then either append path to direct it to your project storage or navigate to your project storage via the UI.
 
-```bash
-#!/bin/bash
-#SBATCH --job-name=elp_sandbox
-#SBATCH --output=elp_sandbox.out
-#SBATCH --error=elp_sandbox.err
-#SBATCH --partition=gpu
-#SBATCH --account=cso100
-#SBATCH --time=24:00:00
-#SBATCH --mem=64G
-#SBATCH --ntasks=1
-#SBATCH --nodes=1
-#SBATCH --gpus=1
-#SBATCH --constraint=lustre
-
-module load singularitypro
-
-SCRATCH_DIR=/expanse/lustre/scratch/$USER/temp_project/elp_sandbox_tmp_$SLURM_JOB_ID
-PROJECT_DIR=/expanse/lustre/projects/cso100/$USER/elp_container
-
-mkdir -p $SCRATCH_DIR/tmp || { echo "Failed to create scratch tmp dir"; exit 1; }
-export SINGULARITY_TMPDIR=$SCRATCH_DIR/tmp
-
-rm -rf $SCRATCH_DIR/sandbox/ $SCRATCH_DIR/tmp/* $SCRATCH_DIR/build-temp-*/
-
-singularity build --sandbox $SCRATCH_DIR/sandbox/ \
-  /cm/shared/apps/containers/singularity/tensorflow/tensorflow-latest.sif \
-  || { echo "Singularity build failed"; exit 1; }
-
-singularity exec --writable $SCRATCH_DIR/sandbox/ bash -c "\
-  pip install --upgrade pip && \
-  pip install -e /expanse/lustre/projects/cso100/$USER/elp_container/ELP-Rumble-Detector" \
-  || { echo "pip install failed"; exit 1; }
-
-rsync -av $SCRATCH_DIR/sandbox/ $PROJECT_DIR/sandbox/ \
-  || { echo "rsync to project dir failed"; exit 1; }
+To ensure consistency between local and remote environments, use the same relative data folder structure on both systems.
+```
+ELP-Rumble-Detector/
+├── data/
+│   ├── tfrecords/
+│   │   ├── tfrecords_audio/
+│   │   │   ├── model1/
+│   │   │   ├── model2/
+│   │   │   └── model3/
+│   │   └── tfrecords_spectrogram/
+│   │       ├── model1/
+│   │       ├── model2/
+│   │       └── model3/
+├── slurm_scripts/
+├── src/
+└── ...
 ```
 
-Submit the job:
+### Remote training workflow (Singularity + GPU validation)
+
+Both `run-train-gpu-shared.sh` and `run-train-gpu-debug.sh` live in `slurm_scripts/`. They perform the following actions automatically:
+
+1. Load `singularitypro` and use `/cm/shared/apps/containers/singularity/tensorflow/tensorflow-latest.sif`
+2. Install the repo into `/expanse/lustre/projects/cso100/$USER/ElephantListeningProject/.pythonuserbase` (editable install)
+3. Run a TensorFlow GPU detection check inside the container and fail fast if no GPUs are visible
+4. Invoke either `elp_rumble.training.train_cnn` or `train_rnn` with your requested split and optional epoch override
+
+Invoke the scripts with `MODELTYPE` (`cnn` or `rnn`) and `MODEL` (`model1`, `model2`, or `model3`). An optional `EPOCHS` value overrides the default epoch count. Example invocations:
 
 ```bash
-sbatch build_and_setup_container.slurm
+# Run the shared job with the CNN trainer on model3 (default epochs)
+sbatch slurm_scripts/run-train-gpu-shared.sh cnn model3
+
+# Run the debug job on model1 with 2 epochs for a quick sanity check
+sbatch slurm_scripts/run-train-gpu-debug.sh cnn model1 2
+
+# Run the RNN trainer on the shared partition
+sbatch slurm_scripts/run-train-gpu-shared.sh rnn model2
 ```
 
-### Verify the container environment
-
-After the build job completes, confirm Python version, TensorFlow, and GPU visibility:
-
-```bash
-singularity exec --nv /expanse/lustre/projects/cso100/$USER/elp_container/sandbox/ \
-python -c "
-import sys, tensorflow as tf
-print('Python', sys.version)
-print('TensorFlow', tf.__version__)
-print('GPUs:', tf.config.list_physical_devices('GPU'))
-"
-```
-
-### Upload processed data tfrecords to Expanse
-
-From your local machine:
-
-```bash
-rsync -avh --progress \
-  "/path/to/local/ELP-Rumble-Detector/data/tfrecords" \
-  your_username@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/your_username/elp_container/ELP-Rumble-Detector/data/tfrecords
-```
-
-### Running training jobs
-
-SLURM scripts live in `slurm_scripts/`:
-
-```bash
-# Debug (quick path check, 20 min)
-sbatch slurm_scripts/run-train-gpu-debug.sh
-
-# Full training
-sbatch slurm_scripts/run-train-gpu-shared.sh
-
-# Convenience wrapper
-bash slurm_scripts/submit-train.sh shared   # or: debug
-```
+Each script prints the usage string and exits if `MODELTYPE` or `MODEL` are missing/invalid. The GPU check occurs before training so you won’t waste time running if the container cannot see any devices.
 
 ### Monitor jobs
 
