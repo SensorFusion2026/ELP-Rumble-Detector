@@ -210,7 +210,7 @@ scancel <job_id>                            # cancel
 
 ## Training (Local)
 
-Select a model split via the `MODEL` environment variable (`model1`, `model2`, `model3`). Results are saved under `runs/cnn/<run_name>/`.
+Select a model split via the `MODEL` environment variable (`model1`, `model2`, `model3`). Results are saved under `runs/{cnn,rnn}/<run_name>/` depending on the trainer.
 
 ### CNN
 
