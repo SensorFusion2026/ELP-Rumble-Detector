@@ -42,8 +42,8 @@ VAL_PATH   = str(_spec_dir / "validate.tfrecord")
 TEST_PATH  = str(_spec_dir / "test.tfrecord")
 
 # ── Parse-function shorthands ─────────────────────────────────────────────────
-_parse = functools.partial(parse_tfrecord_example, type="spectrogram", clip_id=False)
-_parse_with_id = functools.partial(parse_tfrecord_example, type="spectrogram", clip_id=True)
+_parse = functools.partial(parse_tfrecord_example, data_type="spectrogram", clip_id=False)
+_parse_with_id = functools.partial(parse_tfrecord_example, data_type="spectrogram", clip_id=True)
 
 
 def main():

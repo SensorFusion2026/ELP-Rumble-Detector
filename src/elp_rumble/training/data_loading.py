@@ -70,13 +70,13 @@ def get_class_weights(train_path: str, parse_fn) -> dict:
 
 # ── Unified parse function ───────────────────────────────────────────────────
 
-def parse_tfrecord_example(serialized, type="spectrogram", clip_id=False):
+def parse_tfrecord_example(serialized, data_type="spectrogram", clip_id=False):
     """
     Parse a single TFRecord example.
 
     Args:
         serialized: A scalar string tensor (one raw TFRecord example).
-        type: "spectrogram" → reshapes to SPEC_SHAPE (563, 98, 1).
+        data_type: "spectrogram" → reshapes to SPEC_SHAPE (563, 98, 1).
               "audio"       → reshapes to [AUDIO_LENGTH] (20000,).
         clip_id: If True, also returns the "clip_wav_relpath" feature as a
                  third element. Records without that feature return b"".
@@ -95,12 +95,12 @@ def parse_tfrecord_example(serialized, type="spectrogram", clip_id=False):
     ex = tf.io.parse_single_example(serialized, feature_desc)
 
     x = tf.io.parse_tensor(ex["sample"], out_type=tf.float32)
-    if type == "spectrogram":
+    if data_type == "spectrogram":
         x = tf.reshape(x, SPEC_SHAPE)
-    elif type == "audio":
+    elif data_type == "audio":
         x = tf.reshape(x, [AUDIO_LENGTH])
     else:
-        raise ValueError(f"Unknown type: {type!r}. Use 'spectrogram' or 'audio'.")
+        raise ValueError(f"Unknown data_type: {data_type!r}. Use 'spectrogram' or 'audio'.")
 
     y = tf.cast(ex["label"], tf.float32)
     y = tf.reshape(y, [1])
