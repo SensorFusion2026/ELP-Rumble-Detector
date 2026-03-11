@@ -13,6 +13,9 @@ dependencies = [
   "scipy",
   "scikit-learn",
   "tensorflow",
+  "matplotlib",
+  "tensorboard",
+  "jupyter",
 ]
 
 [tool.setuptools]

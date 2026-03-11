@@ -208,18 +208,60 @@ scancel <job_id>                            # cancel
 
 ---
 
-## Running Experiments (Local)
+## Training (Local)
+
+Select a model split via the `MODEL` environment variable (`model1`, `model2`, `model3`). Results are saved under `runs/{cnn,rnn}/<run_name>/` depending on the trainer.
+
+### CNN
 
 ```bash
-python -m elp_rumble.training.train_cnn
-python -m elp_rumble.training.train_compare
+MODEL=model3 python -m elp_rumble.training.train_cnn
 ```
 
-With overrides:
+Override epoch count (useful for quick smoke-tests):
 
 ```bash
-python -m elp_rumble.training.train_cnn --epochs 10 --batch_size 32 --lr 1e-4
+MODEL=model1 EPOCHS=2 python -m elp_rumble.training.train_cnn
 ```
+
+### RNN
+
+```bash
+MODEL=model3 python -m elp_rumble.training.train_rnn
+```
+
+### Artifacts saved per run
+
+Each completed run produces a directory `runs/{cnn,rnn}/{MODEL}_bs{BS}_lr{LR}_e{EPOCHS}_{TIMESTAMP}/` containing:
+
+| File | Description |
+|------|-------------|
+| `params.json` | All hyperparameters, TFRecord paths, class weights |
+| `history.csv` | Per-epoch loss, accuracy, precision, recall, AUC (train + val) |
+| `best_model.keras` | Best checkpoint (monitored by val AUC) |
+| `final_model.keras` | Last-epoch model |
+| `test_metrics.json` | Test-set accuracy, precision, recall, AUC, confusion matrix |
+| `test_predictions.csv` | Per-clip: `clip_wav_relpath`, `y_true`, `y_pred`, `y_score` |
+| `logs/` | TensorBoard event files |
+
+---
+
+## Evaluation
+
+Generate publication-quality figures from a completed run (no model reload needed):
+
+```bash
+python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/<run_name>
+```
+
+Figures are saved to `results/figures/` as both PDF (for LaTeX) and PNG at 300 DPI:
+
+- `training_curves.{pdf,png}` — loss + AUC vs. epoch
+- `confusion_matrix.{pdf,png}` — counts and percentages
+- `roc_curve.{pdf,png}` — ROC with AUC annotated
+- `pr_curve.{pdf,png}` — precision-recall with AP annotated
+
+A display-only notebook at `notebooks/cnn_results.ipynb` renders these figures alongside a metrics summary table.
 
 ---
 
