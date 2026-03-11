@@ -6,6 +6,7 @@ import functools
 import json
 import os
 from datetime import datetime
+from sklearn.metrics import roc_auc_score
 
 import tensorflow as tf
 
@@ -142,9 +143,6 @@ def main():
         y_scores.extend(scores.tolist())
         y_trues.extend(labels.tolist())
         y_preds.extend((scores >= 0.5).astype(int).tolist())
-
-    import numpy as np
-    from sklearn.metrics import roc_auc_score
 
     tp = sum(1 for t, p in zip(y_trues, y_preds) if t == 1 and p == 1)
     tn = sum(1 for t, p in zip(y_trues, y_preds) if t == 0 and p == 0)
