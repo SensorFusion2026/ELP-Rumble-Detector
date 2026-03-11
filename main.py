@@ -9,7 +9,7 @@ src_dir = repo_root / "src"
 if src_dir.is_dir():
     sys.path.insert(0, str(src_dir))
 
-from elp_rumble.training.train_compare import main
+from elp_rumble.training.train_cnn import main
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
-# training/train_cnn.py
-"""CNN training pipeline for the ELP Rumble Detector."""
+# training/train_rnn.py
+"""RNN training pipeline for the ELP Rumble Detector."""
 
 import csv
 import functools
@@ -9,8 +9,8 @@ from datetime import datetime
 
 import tensorflow as tf
 
-from elp_rumble.config.paths import RUNS_DIR, TFRECORDS_SPECTROGRAM_DIR
-from elp_rumble.models.cnn import CNN
+from elp_rumble.config.paths import RUNS_DIR, TFRECORDS_AUDIO_DIR
+from elp_rumble.models.rnn import RNN
 from elp_rumble.training.data_loading import (
     count_examples,
     get_class_weights,
@@ -22,9 +22,9 @@ from elp_rumble.training.data_loading import (
 gpus = tf.config.list_physical_devices("GPU")
 if gpus:
     tf.keras.mixed_precision.set_global_policy("mixed_float16")
-    print(f"[train_cnn] GPU detected: {[g.name for g in gpus]} — mixed precision enabled.")
+    print(f"[train_rnn] GPU detected: {[g.name for g in gpus]} — mixed precision enabled.")
 else:
-    print("[train_cnn] No GPU detected — running on CPU.")
+    print("[train_rnn] No GPU detected — running on CPU.")
 
 # ── Module-level constants ───────────────────────────────────────────────────
 MODEL = os.getenv("MODEL", "model3")
@@ -34,33 +34,33 @@ LEARNING_RATE = 1e-4
 LR_DECAY_STEPS = 500
 LR_DECAY_RATE = 0.97
 DROPOUT_RATE = 0.5
-INPUT_SHAPE = (563, 98, 1)
+SEQUENCE_LENGTH = 20000  # 5 s @ 4 kHz
 
-_spec_dir = TFRECORDS_SPECTROGRAM_DIR / MODEL
-TRAIN_PATH = str(_spec_dir / "train.tfrecord")
-VAL_PATH   = str(_spec_dir / "validate.tfrecord")
-TEST_PATH  = str(_spec_dir / "test.tfrecord")
+_audio_dir = TFRECORDS_AUDIO_DIR / MODEL
+TRAIN_PATH = str(_audio_dir / "train.tfrecord")
+VAL_PATH   = str(_audio_dir / "validate.tfrecord")
+TEST_PATH  = str(_audio_dir / "test.tfrecord")
 
 # ── Parse-function shorthands ─────────────────────────────────────────────────
-_parse = functools.partial(parse_tfrecord_example, type="spectrogram", clip_id=False)
-_parse_with_id = functools.partial(parse_tfrecord_example, type="spectrogram", clip_id=True)
+_parse = functools.partial(parse_tfrecord_example, type="audio", clip_id=False)
+_parse_with_id = functools.partial(parse_tfrecord_example, type="audio", clip_id=True)
 
 
 def main():
     # ── Run directory ────────────────────────────────────────────────────────
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_name = f"{MODEL}_bs{BATCH_SIZE}_lr{LEARNING_RATE}_e{EPOCHS}_{ts}"
-    export_dir = RUNS_DIR / "cnn" / run_name
+    export_dir = RUNS_DIR / "rnn" / run_name
     export_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[train_cnn] Run directory: {export_dir}")
-    print(f"[train_cnn] Model split  : {MODEL}")
+    print(f"[train_rnn] Run directory: {export_dir}")
+    print(f"[train_rnn] Model split  : {MODEL}")
 
     # ── Datasets ─────────────────────────────────────────────────────────────
     train_ds = make_ds(TRAIN_PATH, _parse, BATCH_SIZE, shuffle=True)
     val_ds   = make_ds(VAL_PATH,   _parse, BATCH_SIZE, shuffle=False)
 
     # ── Class weights ────────────────────────────────────────────────────────
-    print("[train_cnn] Computing class weights…")
+    print("[train_rnn] Computing class weights…")
     class_weights = get_class_weights(TRAIN_PATH, _parse)
     print(f"  class_weights = {class_weights}")
 
@@ -73,7 +73,7 @@ def main():
         "lr_decay_steps": LR_DECAY_STEPS,
         "lr_decay_rate": LR_DECAY_RATE,
         "dropout_rate": DROPOUT_RATE,
-        "input_shape": list(INPUT_SHAPE),
+        "sequence_length": SEQUENCE_LENGTH,
         "class_weights": {str(k): v for k, v in class_weights.items()},
         "tfrecord_train": TRAIN_PATH,
         "tfrecord_val":   VAL_PATH,
@@ -88,7 +88,7 @@ def main():
         decay_steps=LR_DECAY_STEPS,
         decay_rate=LR_DECAY_RATE,
     )
-    model = CNN(input_shape=INPUT_SHAPE, dropout_rate=DROPOUT_RATE)
+    model = RNN(sequence_length=SEQUENCE_LENGTH, dropout_rate=DROPOUT_RATE)
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=lr_schedule),
         loss="binary_crossentropy",
@@ -99,7 +99,7 @@ def main():
             tf.keras.metrics.AUC(name="auc"),
         ],
     )
-    model.build((None, *INPUT_SHAPE))
+    model.build((None, SEQUENCE_LENGTH))
     model.summary()
 
     # ── Callbacks ────────────────────────────────────────────────────────────
@@ -127,10 +127,10 @@ def main():
 
     # ── Save final model ─────────────────────────────────────────────────────
     model.save(str(export_dir / "final_model.keras"))
-    print("[train_cnn] Final model saved.")
+    print("[train_rnn] Final model saved.")
 
     # ── Test evaluation (best model) ─────────────────────────────────────────
-    print("[train_cnn] Loading best_model.keras for test evaluation…")
+    print("[train_rnn] Loading best_model.keras for test evaluation…")
     best_model = tf.keras.models.load_model(str(export_dir / "best_model.keras"))
 
     test_ds = make_ds(TEST_PATH, _parse, BATCH_SIZE, shuffle=False)
@@ -143,7 +143,6 @@ def main():
         y_trues.extend(labels.tolist())
         y_preds.extend((scores >= 0.5).astype(int).tolist())
 
-    import numpy as np
     from sklearn.metrics import roc_auc_score
 
     tp = sum(1 for t, p in zip(y_trues, y_preds) if t == 1 and p == 1)
@@ -184,7 +183,7 @@ def main():
             writer.writerow([clip_id, int(y_true), int(y_pred), f"{y_score:.6f}"])
 
     # ── Summary ──────────────────────────────────────────────────────────────
-    print(f"\n[train_cnn] Run complete: {export_dir}")
+    print(f"\n[train_rnn] Run complete: {export_dir}")
     for artifact in ("params.json", "history.csv", "best_model.keras",
                      "final_model.keras", "test_metrics.json", "test_predictions.csv", "logs/"):
         print(f"  {artifact:<24} ✓")

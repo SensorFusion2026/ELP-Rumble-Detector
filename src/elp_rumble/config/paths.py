@@ -79,6 +79,9 @@ TFRECORDS_ROOT = DATA_ROOT / "tfrecords"
 TFRECORDS_AUDIO_DIR = TFRECORDS_ROOT / "tfrecords_audio"
 TFRECORDS_SPECTROGRAM_DIR = TFRECORDS_ROOT / "tfrecords_spectrogram"
 
+# Training run outputs
+RUNS_DIR = PROJECT_ROOT / "runs"
+
 
 # ---------------------------------------------------------------------
 # Utility: create derived directories if needed
