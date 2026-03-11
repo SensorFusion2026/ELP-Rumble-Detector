@@ -55,6 +55,16 @@ def get_class_weights(train_path: str, parse_fn) -> dict:
         else:
             n0 += 1
     n_total = n0 + n1
+    if n_total == 0:  
+        raise ValueError(  
+            f"Cannot compute class weights: training TFRecord '{train_path}' "
+            "contains no examples."
+        )  
+    if n0 == 0 or n1 == 0:
+        raise ValueError(
+            f"Cannot compute class weights from '{train_path}': "
+            f"class counts are n0={n0}, n1={n1}. Both classes must be present."
+        )
     return {0: n_total / (2.0 * n0), 1: n_total / (2.0 * n1)}
 
 
