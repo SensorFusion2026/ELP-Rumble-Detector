@@ -35,7 +35,7 @@ cd ELP-Rumble-Detector
 ```bash
 ~/.pyenv/versions/3.10.13/bin/python -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -e .[full]   # includes TensorFlow, TensorBoard, and Jupyter
 ```
 
 ### Configure your local data path
@@ -105,7 +105,7 @@ create_tfrecords.py  ──►  data/tfrecords/...                         (loca
 
 Clone the repo under the shared project root so it co-resides with other Elephant Listening Project material:
 
-```
+```bash
 /expanse/lustre/projects/cso100/<your_username>/ElephantListeningProject/
    └── ELP-Rumble-Detector/
 ```
@@ -132,29 +132,51 @@ ELP-Rumble-Detector/
 └── ...
 ```
 
-### Remote training workflow (Singularity + GPU validation)
+### Build the Singularity container
 
-Both `run-train-gpu-shared.sh` and `run-train-gpu-debug.sh` live in `slurm_scripts/`. They perform the following actions automatically:
-
-1. Load `singularitypro` and use `/cm/shared/apps/containers/singularity/tensorflow/tensorflow-latest.sif`
-2. Install the repo into `/expanse/lustre/projects/cso100/$USER/ElephantListeningProject/.pythonuserbase` (editable install)
-3. Run a TensorFlow GPU detection check inside the container and fail fast if no GPUs are visible
-4. Invoke either `elp_rumble.training.train_cnn` or `train_rnn` with your requested split and optional epoch override
-
-Invoke the scripts with `MODELTYPE` (`cnn` or `rnn`) and `MODEL` (`model1`, `model2`, or `model3`). An optional `EPOCHS` value overrides the default epoch count. Example invocations:
+Training runs inside a Singularity container. Build it once on a Linux machine with [Apptainer](https://apptainer.org/) installed:
 
 ```bash
-# Run the shared job with the CNN trainer on model3 (default epochs)
+apptainer pull tensorflow-2.15.0-gpu.sif \
+  docker://tensorflow/tensorflow:2.15.0-gpu
+```
+
+Upload it to Expanse so the file exists at: `$PROJECT_ROOT/tensorflow-2.15.0-gpu.sif`, i.e. one level above `ELP-Rumble-Detector/`.
+
+```
+rsync -avP tensorflow-2.15.0-gpu.sif \
+<your_username>@login.expanse.sdsc.edu:/expanse/lustre/projects/cso100/<your_username>/ElephantListeningProject/
+```
+
+### Remote training workflow (Singularity + GPU validation)
+
+**Step 1 — install the package into the container’s Python environment (run once, or after dependency changes):**
+
+```bash
+bash slurm_scripts/setup-pythonuserbase.sh
+```
+
+This installs the repo as an editable package into `$PROJECT_ROOT/.pythonuserbase` in a shared user base (`$PROJECT_ROOT/.pythonuserbase`) used by the container. It records a hash of `pyproject.toml` so the training scripts can detect when a reinstall is needed.
+
+**Step 2 — submit a training job:**
+
+Both `run-train-gpu-shared.sh` and `run-train-gpu-debug.sh` live in `slurm_scripts/`. They will fail fast if setup hasn’t been run or if no GPUs are visible inside the container.
+
+Invoke with `MODELTYPE` (`cnn` or `rnn`) and `MODEL` (`model1`, `model2`, or `model3`). An optional third argument overrides the epoch count.
+
+Examples:
+```bash
+# Shared partition — CNN on model3 (default epochs)
 sbatch slurm_scripts/run-train-gpu-shared.sh cnn model3
 
-# Run the debug job on model1 with 2 epochs for a quick sanity check
+# Debug partition — quick sanity check with 2 epochs
 sbatch slurm_scripts/run-train-gpu-debug.sh cnn model1 2
 
-# Run the RNN trainer on the shared partition
+# Shared partition — RNN trainer
 sbatch slurm_scripts/run-train-gpu-shared.sh rnn model2
 ```
 
-Each script prints the usage string and exits if `MODELTYPE` or `MODEL` are missing/invalid. The GPU check occurs before training so you won’t waste time running if the container cannot see any devices.
+Each script prints a usage message and exits if `MODELTYPE` or `MODEL` are missing or invalid.
 
 ### Monitor jobs
 
