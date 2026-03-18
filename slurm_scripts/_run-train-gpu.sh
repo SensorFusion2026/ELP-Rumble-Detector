@@ -39,16 +39,22 @@ module purge
 module load singularitypro/3.11
 module list
 
-export PROJECT_ROOT="/expanse/lustre/projects/cso100/$USER/ElephantListeningProject"
-export SIF="$PROJECT_ROOT/tensorflow-2.15.0-gpu.sif"
-export PYTHONUSERBASE="$PROJECT_ROOT/.pythonuserbase"
+export PROJECT_ROOT="${PROJECT_ROOT:-/expanse/lustre/projects/cso100/$USER/ElephantListeningProject}"
+export REPO_ROOT="${REPO_ROOT:-$PROJECT_ROOT/ELP-Rumble-Detector}"
+export SIF="${SIF:-$PROJECT_ROOT/tensorflow-2.15.0-gpu.sif}"
+export PYTHONUSERBASE="${PYTHONUSERBASE:-$PROJECT_ROOT/.pythonuserbase}"
 export NVIDIA_DISABLE_REQUIRE=true
 
-SLURM_LOG_DIR="$PROJECT_ROOT/slurm_logs"
+SLURM_LOG_DIR="$REPO_ROOT/slurm_logs"
 if [[ ! -d "$SLURM_LOG_DIR" ]]; then
   echo "ERROR: $SLURM_LOG_DIR does not exist." >&2
   echo "Create it before submitting the job:" >&2
   echo "  mkdir -p $SLURM_LOG_DIR" >&2
+  exit 1
+fi
+
+if [[ ! -d "$REPO_ROOT" ]]; then
+  echo "ERROR: Repo not found: $REPO_ROOT" >&2
   exit 1
 fi
 
@@ -57,13 +63,22 @@ if [[ ! -f "$SIF" ]]; then
   exit 1
 fi
 
-# Install the editable repo into the persistent user base.
-singularity exec --bind "$PROJECT_ROOT:$PROJECT_ROOT:rw" "$SIF" bash -lc "\
-  export PYTHONUSERBASE='$PYTHONUSERBASE' && \
-  export PATH='$PYTHONUSERBASE/bin:'\"\$PATH\" && \
-  python -m pip install --upgrade --user pip setuptools wheel && \
-  python -m pip install --user -e '$PROJECT_ROOT/ELP-Rumble-Detector'
-"
+STAMP_DIR="$PYTHONUSERBASE/.elp_rumble"
+STAMP_FILE="$STAMP_DIR/pyproject.sha256"
+
+CURRENT_HASH="$(sha256sum "$REPO_ROOT/pyproject.toml" | awk '{print $1}')"
+INSTALLED_HASH=""
+
+if [[ -f "$STAMP_FILE" ]]; then
+  INSTALLED_HASH="$(cat "$STAMP_FILE")"
+fi
+
+if [[ ! -f "$STAMP_FILE" || "$CURRENT_HASH" != "$INSTALLED_HASH" ]]; then
+  echo "ERROR: Python user environment is missing or out of date." >&2
+  echo "Run setup first:" >&2
+  echo "  $REPO_ROOT/slurm_scripts/setup-pythonuserbase.sh" >&2
+  exit 1
+fi
 
 GPU_CHECK_SCRIPT="python - <<'PY'
 import sys

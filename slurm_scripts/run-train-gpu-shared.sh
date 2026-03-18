@@ -10,5 +10,4 @@
 #SBATCH --time=08:00:00
 #SBATCH --output=/expanse/lustre/projects/cso100/%u/ElephantListeningProject/slurm_logs/%x.o%j.%N
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "$SCRIPT_DIR/_run-train-gpu.sh" "$@"
+exec "/expanse/lustre/projects/cso100/$USER/ElephantListeningProject/ELP-Rumble-Detector/slurm_scripts/_run-train-gpu.sh" "$@"
