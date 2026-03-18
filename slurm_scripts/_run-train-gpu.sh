@@ -12,7 +12,7 @@ EOF
   exit 1
 }
 
-if [ $# -lt 2 ]; then
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
   usage
 fi
 
@@ -36,11 +36,11 @@ if [[ -n "$EPOCHS" && ! "$EPOCHS" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 module purge
-module load singularitypro
+module load singularitypro/3.11
 module list
 
 export PROJECT_ROOT="/expanse/lustre/projects/cso100/$USER/ElephantListeningProject"
-export SIF="/cm/shared/apps/containers/singularity/tensorflow/tensorflow-latest.sif"
+export SIF="$PROJECT_ROOT/tensorflow-2.15.0-gpu.sif"
 export PYTHONUSERBASE="$PROJECT_ROOT/.pythonuserbase"
 export NVIDIA_DISABLE_REQUIRE=true
 
@@ -49,6 +49,11 @@ if [[ ! -d "$SLURM_LOG_DIR" ]]; then
   echo "ERROR: $SLURM_LOG_DIR does not exist." >&2
   echo "Create it before submitting the job:" >&2
   echo "  mkdir -p $SLURM_LOG_DIR" >&2
+  exit 1
+fi
+
+if [[ ! -f "$SIF" ]]; then
+  echo "ERROR: Container not found: $SIF" >&2
   exit 1
 fi
 

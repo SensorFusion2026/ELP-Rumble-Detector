@@ -12,9 +12,13 @@ dependencies = [
   "pandas",
   "scipy",
   "scikit-learn",
-  "tensorflow",
   "matplotlib",
-  "tensorboard",
+]
+
+[project.optional-dependencies]
+full = [
+  "tensorflow==2.21.0",
+  "tensorboard==2.20.0",
   "jupyter",
 ]
 
