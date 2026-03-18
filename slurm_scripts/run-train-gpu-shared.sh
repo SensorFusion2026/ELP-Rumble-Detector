@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=train_cnn_shared
+#SBATCH --job-name=elp_rumble_train
 #SBATCH --account=cso100
 #SBATCH --partition=gpu-shared
 #SBATCH --nodes=1
@@ -7,22 +7,10 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --gpus=1
-#SBATCH --time=04:00:00
-#SBATCH --output=slurm_logs/%x.o%j.%N
+#SBATCH --time=08:00:00
+#SBATCH --output=/expanse/lustre/projects/cso100/%u/ElephantListeningProject/ELP-Rumble-Detector/slurm_logs/%x.o%j.%N
 
-set -euo pipefail
+PROJECT_ROOT="${PROJECT_ROOT:-/expanse/lustre/projects/cso100/$USER/ElephantListeningProject}"
+REPO_ROOT="${REPO_ROOT:-$PROJECT_ROOT/ELP-Rumble-Detector}"
 
-declare -xr SINGULARITY_MODULE="singularitypro/3.11"
-SANDBOX_PATH="${SANDBOX_PATH:-../sandbox}"
-
-mkdir -p slurm_logs
-
-module purge
-module load "${SINGULARITY_MODULE}"
-module list
-
-export NVIDIA_DISABLE_REQUIRE=true
-
-# Runs the current package training entrypoint.
-time -p singularity exec --bind /expanse,/scratch --nv "${SANDBOX_PATH}" \
-  python -u -m elp_rumble.training.train_cnn
+exec bash "$REPO_ROOT/slurm_scripts/_run-train-gpu.sh" "$@"
