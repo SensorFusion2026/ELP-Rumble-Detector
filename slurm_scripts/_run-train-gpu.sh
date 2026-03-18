@@ -41,7 +41,7 @@ module list
 
 export PROJECT_ROOT="${PROJECT_ROOT:-/expanse/lustre/projects/cso100/$USER/ElephantListeningProject}"
 export REPO_ROOT="${REPO_ROOT:-$PROJECT_ROOT/ELP-Rumble-Detector}"
-export SIF="${SIF:-$PROJECT_ROOT/tensorflow-2.21.0-gpu.sif}"
+export SIF="${SIF:-$PROJECT_ROOT/tensorflow-2.15.0-gpu.sif}"
 export PYTHONUSERBASE="${PYTHONUSERBASE:-$PROJECT_ROOT/.pythonuserbase}"
 export NVIDIA_DISABLE_REQUIRE=true
 
