@@ -29,6 +29,11 @@ fi
 
 CURRENT_HASH="$(sha256sum "$REPO_ROOT/pyproject.toml" | awk '{print $1}')"
 
+if [[ -f "$STAMP_FILE" && "$(cat "$STAMP_FILE")" == "$CURRENT_HASH" ]]; then
+  echo "Setup already up to date (pyproject.toml hash matches). Skipping reinstall."
+  exit 0
+fi
+
 singularity exec --bind "$PROJECT_ROOT:$PROJECT_ROOT:rw" "$SIF" bash -lc "\
   export PYTHONUSERBASE='$PYTHONUSERBASE' && \
   export PATH='$PYTHONUSERBASE/bin:'\"\$PATH\" && \

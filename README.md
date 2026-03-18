@@ -150,6 +150,14 @@ rsync -avP tensorflow-2.15.0-gpu.sif \
 
 ### Remote training workflow (Singularity + GPU validation)
 
+**Step 0 — create the SLURM log directory (run once after cloning):**
+
+```bash
+mkdir -p slurm_logs
+```
+
+SLURM writes job output to `slurm_logs/` and will fail immediately if the directory is missing. This repo ships a `.gitkeep` placeholder so it exists after cloning.
+
 **Step 1 — install the package into the container’s Python environment (run once, or after dependency changes):**
 
 ```bash

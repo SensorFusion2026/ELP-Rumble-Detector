@@ -17,8 +17,8 @@ dependencies = [
 
 [project.optional-dependencies]
 full = [
-  "tensorflow==2.21.0",
-  "tensorboard==2.20.0",
+  "tensorflow==2.15.0",
+  "tensorboard==2.15.2",
   "jupyter",
 ]
 

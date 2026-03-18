@@ -45,16 +45,16 @@ export SIF="${SIF:-$PROJECT_ROOT/tensorflow-2.15.0-gpu.sif}"
 export PYTHONUSERBASE="${PYTHONUSERBASE:-$PROJECT_ROOT/.pythonuserbase}"
 export NVIDIA_DISABLE_REQUIRE=true
 
+if [[ ! -d "$REPO_ROOT" ]]; then
+  echo "ERROR: Repo not found: $REPO_ROOT" >&2
+  exit 1
+fi
+
 SLURM_LOG_DIR="$REPO_ROOT/slurm_logs"
 if [[ ! -d "$SLURM_LOG_DIR" ]]; then
   echo "ERROR: $SLURM_LOG_DIR does not exist." >&2
   echo "Create it before submitting the job:" >&2
   echo "  mkdir -p $SLURM_LOG_DIR" >&2
-  exit 1
-fi
-
-if [[ ! -d "$REPO_ROOT" ]]; then
-  echo "ERROR: Repo not found: $REPO_ROOT" >&2
   exit 1
 fi
 
