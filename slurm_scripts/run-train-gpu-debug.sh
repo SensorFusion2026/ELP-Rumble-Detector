@@ -8,6 +8,6 @@
 #SBATCH --mem=16G
 #SBATCH --gpus=1
 #SBATCH --time=00:30:00
-#SBATCH --output=/expanse/lustre/projects/cso100/%u/ElephantListeningProject/slurm_logs/%x.o%j.%N
+#SBATCH --output=/expanse/lustre/projects/cso100/%u/ElephantListeningProject/ELP-Rumble-Detector/slurm_logs/%x.o%j.%N
 
-exec "/expanse/lustre/projects/cso100/$USER/ElephantListeningProject/ELP-Rumble-Detector/slurm_scripts/_run-train-gpu.sh" "$@"
+exec bash "/expanse/lustre/projects/cso100/$USER/ElephantListeningProject/ELP-Rumble-Detector/slurm_scripts/_run-train-gpu.sh" "$@"
