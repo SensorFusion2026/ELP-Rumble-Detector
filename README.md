@@ -228,7 +228,7 @@ Each completed run produces a directory `runs/{cnn,rnn}/{MODEL}_bs{BS}_lr{LR}_e{
 | `params.json` | All hyperparameters, TFRecord paths, class weights |
 | `history.csv` | Per-epoch loss, accuracy, precision, recall, AUC (train + val) |
 | `best_model.keras` | Best checkpoint (monitored by val AUC) |
-| `final_model.keras` | Last-epoch model |
+| `final_model.keras` | Final trained model (with best-validation weights restored if early stopping is used) |
 | `test_metrics.json` | Test-set accuracy, precision, recall, AUC, confusion matrix |
 | `test_predictions.csv` | Per-clip: `clip_wav_relpath`, `y_true`, `y_pred`, `y_score` |
 | `logs/` | TensorBoard event files |
