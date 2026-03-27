@@ -1,15 +1,30 @@
-/.DS_Store
-/data
-/data_backup*
-*.egg-info/
-.env
-/exported
-.github/
-/model_checkpoints
+# macOS
+.DS_Store
+
+# Python
 __pycache__/
 *.py[cod]
-/logs
+*.egg-info/
+
+# Virtual env
 .venv/
+
+# Environment variables
+.env
+
+# Data (large / local)
+data/
+data_backup*/
+
+# Logs / outputs
+runs/
+results/
+Legacy/exported/
+Legacy/logs/
+Legacy/model_checkpoints/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
 .vscode/
-/runs
-/results
