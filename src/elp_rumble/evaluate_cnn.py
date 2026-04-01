@@ -3,12 +3,15 @@
 Generate publication-quality figures from a completed CNN training run.
 
 Usage:
-    python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/model3_bs32_lr0.0001_e50_20260315_120000
-    python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/... --output_dir results/figures/
+    python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/model3_bs32_lr0.0001_e50_20260311_061805
+    python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/... --include_notebook true
+    python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/... --output_dir runs/cnn/.../figures
 """
 
 import argparse
 import json
+import os
+import shutil
 from pathlib import Path
 
 import matplotlib
@@ -28,6 +31,69 @@ def save_fig(fig, output_dir: Path, stem: str) -> None:
         fig.savefig(path, dpi=300, bbox_inches="tight")
         print(f"  Saved: {path}")
     plt.close(fig)
+
+
+def materialize_results_notebook(run_dir: Path, output_dir: Path) -> None:
+    """Copy the CNN results notebook into the run directory and retarget paths."""
+    project_root = Path(__file__).resolve().parents[2]
+    template_path = project_root / "runs" / "cnn" / "cnn_results_template.ipynb"
+    notebook_out = run_dir / "cnn_results.ipynb"
+
+    if not template_path.exists():
+        print(f"  Skipping notebook: template not found at {template_path}")
+        return
+
+    shutil.copy2(template_path, notebook_out)
+
+    notebook = json.loads(notebook_out.read_text())
+    figures_rel = Path(os.path.relpath(output_dir.resolve(), start=run_dir.resolve())).as_posix()
+    changed = False
+    metadata_changed = False
+
+    for cell in notebook.get("cells", []):
+        if cell.get("cell_type") != "code":
+            continue
+
+        # Ensure copied notebooks are blank/unexecuted each time.
+        if cell.get("execution_count") is not None:
+            metadata_changed = True
+        if cell.get("outputs"):
+            metadata_changed = True
+        cell["execution_count"] = None
+        cell["outputs"] = []
+
+        source = cell.get("source", [])
+        updated_source = []
+        for line in source:
+            suffix = "\n" if line.endswith("\n") else ""
+            stripped = line.strip()
+
+            if stripped.startswith("FIGURES_DIR = Path("):
+                updated_source.append(f'FIGURES_DIR = Path("{figures_rel}"){suffix}')
+                changed = True
+            elif stripped.startswith("RUN_DIR = Path("):
+                updated_source.append(f'RUN_DIR = Path("."){suffix}')
+                changed = True
+            else:
+                updated_source.append(line)
+
+        cell["source"] = updated_source
+
+    if changed or metadata_changed:
+        notebook_out.write_text(json.dumps(notebook, indent=2))
+    print(f"  Saved: {notebook_out}")
+
+
+def parse_bool(value: str | bool) -> bool:
+    """Parse human-friendly boolean CLI values."""
+    if isinstance(value, bool):
+        return value
+    value_norm = value.strip().lower()
+    if value_norm in {"1", "true", "t", "yes", "y", "on"}:
+        return True
+    if value_norm in {"0", "false", "f", "no", "n", "off"}:
+        return False
+    raise argparse.ArgumentTypeError(f"Invalid boolean value: {value}")
 
 
 # ── Figure generators ────────────────────────────────────────────────────────
@@ -54,7 +120,7 @@ def plot_training_curves(history_df: pd.DataFrame, output_dir: Path) -> None:
         ax.plot(history_df["epoch"], history_df["val_auc"], label="Val AUC")
     ax.set_xlabel("Epoch")
     ax.set_ylabel("AUC")
-    ax.set_title("Training / Validation AUC")
+    ax.set_title("Training / Validation Area Under Curve (AUC)")
     ax.legend()
     ax.grid(True, linestyle="--", alpha=0.5)
 
@@ -116,7 +182,7 @@ def plot_roc_curve(preds_df: pd.DataFrame, output_dir: Path) -> None:
     ax.plot([0, 1], [0, 1], "k--", lw=1, label="Random (AUC = 0.50)")
     ax.set_xlabel("False Positive Rate")
     ax.set_ylabel("True Positive Rate")
-    ax.set_title("ROC Curve")
+    ax.set_title("Receiver Operating Characteristic (ROC) Curve")
     ax.legend(loc="lower right")
     ax.grid(True, linestyle="--", alpha=0.5)
 
@@ -137,12 +203,12 @@ def plot_pr_curve(preds_df: pd.DataFrame, output_dir: Path) -> None:
     baseline = y_true.mean()
 
     fig, ax = plt.subplots(figsize=(6, 5))
-    ax.plot(recall, precision, lw=2, label=f"AP = {ap:.4f}")
-    ax.axhline(baseline, color="k", linestyle="--", lw=1, label=f"Baseline = {baseline:.3f}")
+    ax.plot(recall, precision, lw=2, label=f"Average Precision = {ap:.4f}")
+    ax.axhline(baseline, color="k", linestyle="--", lw=1, label=f"Baseline (y-true mean) = {baseline:.3f}")
     ax.set_xlabel("Recall")
     ax.set_ylabel("Precision")
     ax.set_title("Precision-Recall Curve")
-    ax.legend(loc="upper right")
+    ax.legend(loc="lower right")
     ax.grid(True, linestyle="--", alpha=0.5)
     ax.set_xlim([0.0, 1.0])
     ax.set_ylim([0.0, 1.05])
@@ -157,12 +223,14 @@ def main():
     parser = argparse.ArgumentParser(description="Generate figures from a CNN training run.")
     parser.add_argument("--run_dir", required=True, type=Path,
                         help="Path to a completed run directory (contains history.csv etc.)")
-    parser.add_argument("--output_dir", type=Path, default=Path("results/figures"),
-                        help="Directory to write figures (default: results/figures/)")
+    parser.add_argument("--output_dir", type=Path,
+                        help="Directory to write figures (default: <run_dir>/figures)")
+    parser.add_argument("--include_notebook", nargs="?", const=True, default=False, type=parse_bool,
+                        help="Copy runs/cnn/cnn_results_template.ipynb into <run_dir> (default: false)")
     args = parser.parse_args()
 
     run_dir: Path = args.run_dir
-    output_dir: Path = args.output_dir
+    output_dir: Path = args.output_dir if args.output_dir else (run_dir / "figures")
 
     # ── Load artifacts ────────────────────────────────────────────────────────
     history_path = run_dir / "history.csv"
@@ -197,6 +265,9 @@ def main():
     plot_confusion_matrix(cm, output_dir)
     plot_roc_curve(preds_df, output_dir)
     plot_pr_curve(preds_df, output_dir)
+
+    if args.include_notebook:
+        materialize_results_notebook(run_dir, output_dir)
 
     print("\nDone. 4 figures saved (PDF + PNG each).")
 

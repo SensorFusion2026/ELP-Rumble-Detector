@@ -237,20 +237,38 @@ Each completed run produces a directory `runs/{cnn,rnn}/{MODEL}_bs{BS}_lr{LR}_e{
 
 ## Evaluation
 
-Generate publication-quality figures from a completed run (no model reload needed):
+Generate publication-quality figures from a completed run:
 
 ```bash
 python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/<run_name>
 ```
 
-Figures are saved to `results/figures/` as both PDF (for LaTeX) and PNG at 300 DPI:
+By default, figures are saved to `<run_dir>/figures/` as both PDF and PNG at 300 DPI:
 
-- `training_curves.{pdf,png}` — loss + AUC vs. epoch
-- `confusion_matrix.{pdf,png}` — counts and percentages
-- `roc_curve.{pdf,png}` — ROC with AUC annotated
-- `pr_curve.{pdf,png}` — precision-recall with AP annotated
+- `training_curves.{pdf,png}` - loss + AUC vs. epoch
+- `confusion_matrix.{pdf,png}` - counts and percentages
+- `roc_curve.{pdf,png}` - ROC with AUC annotated
+- `pr_curve.{pdf,png}` - precision-recall with AP annotated
 
-A display-only notebook at `notebooks/cnn_results.ipynb` renders these figures alongside a metrics summary table.
+Optional output directory override:
+
+```bash
+python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/<run_name> --output_dir tmp/figures
+```
+
+Optional run-local notebook copy (default: false):
+
+```bash
+python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/<run_name> --include_notebook true
+```
+
+When notebook inclusion is enabled, a run-local `cnn_results.ipynb` is copied from the template and retargeted to the generated figures. Execute notebook cells manually after generation.
+
+Display-only notebook template:
+
+```
+runs/cnn/cnn_results_template.ipynb
+```
 
 ---
 
