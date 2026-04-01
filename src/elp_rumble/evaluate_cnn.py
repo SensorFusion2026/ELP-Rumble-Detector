@@ -5,6 +5,7 @@ Generate publication-quality figures from a completed CNN training run.
 Usage:
     python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/model3_bs32_lr0.0001_e50_20260311_061805
     python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/... --include_notebook true
+    python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/... --include_notebook true --overwrite_notebook true
     python -m elp_rumble.evaluate_cnn --run_dir runs/cnn/... --output_dir runs/cnn/.../figures
 """
 
@@ -33,7 +34,7 @@ def save_fig(fig, output_dir: Path, stem: str) -> None:
     plt.close(fig)
 
 
-def materialize_results_notebook(run_dir: Path, output_dir: Path) -> None:
+def materialize_results_notebook(run_dir: Path, output_dir: Path, overwrite_notebook: bool = False) -> None:
     """Copy the CNN results notebook into the run directory and retarget paths."""
     project_root = Path(__file__).resolve().parents[2]
     template_path = project_root / "runs" / "cnn" / "cnn_results_template.ipynb"
@@ -42,6 +43,13 @@ def materialize_results_notebook(run_dir: Path, output_dir: Path) -> None:
     if not template_path.exists():
         print(f"  Skipping notebook: template not found at {template_path}")
         return
+
+    if notebook_out.exists() and not overwrite_notebook:
+        print(f"  Skipping notebook: output already exists (use --overwrite_notebook true): {notebook_out}")
+        return
+
+    if notebook_out.exists() and overwrite_notebook:
+        print(f"  Overwriting existing notebook: {notebook_out}")
 
     shutil.copy2(template_path, notebook_out)
 
@@ -227,7 +235,12 @@ def main():
                         help="Directory to write figures (default: <run_dir>/figures)")
     parser.add_argument("--include_notebook", nargs="?", const=True, default=False, type=parse_bool,
                         help="Copy runs/cnn/cnn_results_template.ipynb into <run_dir> (default: false)")
+    parser.add_argument("--overwrite_notebook", nargs="?", const=True, default=False, type=parse_bool,
+                        help="Allow overwriting <run_dir>/cnn_results.ipynb when include_notebook=true (default: false)")
     args = parser.parse_args()
+
+    if args.overwrite_notebook and not args.include_notebook:
+        parser.error("--overwrite_notebook requires --include_notebook true")
 
     run_dir: Path = args.run_dir
     output_dir: Path = args.output_dir if args.output_dir else (run_dir / "figures")
@@ -266,11 +279,11 @@ def main():
     plot_roc_curve(preds_df, output_dir)
     plot_pr_curve(preds_df, output_dir)
 
+    print(f"\nDone. Figures saved (PDF + PNG each).")
+
     if args.include_notebook:
-        materialize_results_notebook(run_dir, output_dir)
-
-    print("\nDone. 4 figures saved (PDF + PNG each).")
-
+        materialize_results_notebook(run_dir, output_dir, overwrite_notebook=args.overwrite_notebook)
+        print(" Results notebook copied.")
 
 if __name__ == "__main__":
     main()
