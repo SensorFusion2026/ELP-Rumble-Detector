@@ -1,0 +1,21 @@
+{
+  "model": "model3",
+  "batch_size": 32,
+  "epochs": 50,
+  "learning_rate": 0.0001,
+  "lr_decay_steps": 500,
+  "lr_decay_rate": 0.97,
+  "dropout_rate": 0.5,
+  "input_shape": [
+    563,
+    98,
+    1
+  ],
+  "class_weights": {
+    "0": 0.6666666666666666,
+    "1": 2.0
+  },
+  "tfrecord_train": "/expanse/lustre/projects/cso100/rdenn/ElephantListeningProject/ELP-Rumble-Detector/data/tfrecords/tfrecords_spectrogram/model3/train.tfrecord",
+  "tfrecord_val": "/expanse/lustre/projects/cso100/rdenn/ElephantListeningProject/ELP-Rumble-Detector/data/tfrecords/tfrecords_spectrogram/model3/validate.tfrecord",
+  "tfrecord_test": "/expanse/lustre/projects/cso100/rdenn/ElephantListeningProject/ELP-Rumble-Detector/data/tfrecords/tfrecords_spectrogram/model3/test.tfrecord"
+}

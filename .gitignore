@@ -17,7 +17,13 @@ data/
 data_backup*/
 
 # Logs / outputs
-runs/
+runs/*
+!runs/cnn/
+runs/cnn/*
+!runs/cnn/cnn_results_template.ipynb
+!runs/cnn/model3_bs32_lr0.0001_e50_20260311_061805/
+runs/cnn/**/*.keras
+runs/cnn/**/*.h5
 results/
 Legacy/exported/
 Legacy/logs/
